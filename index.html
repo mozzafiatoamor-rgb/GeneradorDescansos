@@ -106,7 +106,21 @@ h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em}
 .wgrid .namecell .star{color:var(--plum);font-size:10px}
 .wgrid .cell{border-top:1px solid var(--line);border-right:1px solid var(--line);min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 1px;position:relative}
 .wgrid .cell:last-child{border-right:none}
-.wgrid .cell.todaycol{background:rgba(122,30,59,.035)}
+.wgrid .cell.todaycol{background:transparent}
+.wgrid .grouprow{grid-column:1/-1;background:#F3F1EC;font-family:var(--disp);font-weight:700;font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:5px 12px;border-top:1px solid var(--line)}
+.namecell .shtag{font-size:8.5px;font-weight:700;padding:1px 5px;border-radius:99px;margin-left:4px;vertical-align:middle}
+.shtag.AM{background:#F3E6D6;color:#9A5B1A}.shtag.PM{background:#E2E6EE;color:#3F4756}
+.filterbar{display:flex;flex-direction:column;gap:7px;margin-bottom:12px}
+.fchips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.fchips .fl{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;width:62px;flex:0 0 62px}
+.chip{font-size:12.5px;font-weight:600;padding:6px 11px;border-radius:99px;border:1px solid var(--line-2);background:var(--card)}
+.chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.fsel{flex:1;min-width:0;padding:8px 10px;border:1px solid var(--line-2);border-radius:9px;background:var(--card);font-size:13px}
+.warnlist{margin:-6px 0 12px;display:flex;flex-direction:column;gap:6px}
+.warnitem{display:flex;align-items:center;gap:8px;text-align:left;background:#FFF6F3;border:1px solid #F1D3C9;border-radius:10px;padding:10px 12px;font-size:13px;color:#7E2B17}
+.warnitem b{font-family:var(--disp)}
+.warnitem .go{margin-left:auto;color:var(--warn);font-weight:700;white-space:nowrap}
+.emptynote{padding:24px 16px;text-align:center;color:var(--muted);font-size:14px}
 .cell .tag{font-size:10.5px;font-weight:700;letter-spacing:.02em}
 .cell .cov{font-size:9px;color:var(--muted);line-height:1;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cell .vbadge{position:absolute;top:3px;right:4px;width:7px;height:7px;border-radius:99px;background:var(--warn)}
@@ -508,7 +522,7 @@ function fmtRange(mon){var sun=addDays(mon,6);
   var b=sun.getDate()+' '+MONTHS[sun.getMonth()];
   return a+' – '+b;}
 var today=new Date();
-var state={week:startOfWeek(today),view:'semana',dayIdx:(today.getDay()+6)%7,tab:'cal'};
+var state={week:startOfWeek(today),view:'semana',dayIdx:(today.getDay()+6)%7,tab:'cal',filters:{turno:'all',area:'all',emp:'all'},warnsOpen:false};
 
 /* ---------- status resolution ---------- */
 function weekKey(mon){return iso(mon);}
@@ -629,58 +643,84 @@ function renderHeader(){
   var ws=document.getElementById('weekSub');if(ws)ws.textContent=sameAsThis?'Semana actual':'Semana del '+state.week.getFullYear();
 }
 
+function collectWarns(){var out=[];for(var d=0;d<7;d++){validateDay(state.week,d).forEach(function(t){out.push({d:d,t:t});});}return out;}
+function gotoDay(d){state.view='dia';state.dayIdx=d;var a=document.getElementById('vDia'),b=document.getElementById('vSemana');if(a)a.classList.add('on');if(b)b.classList.remove('on');renderCalendar();window.scrollTo(0,0);}
 function renderWarnbar(){
   var host=document.getElementById('warnbarHost');if(!host)return;
-  var n=weekWarnCount(state.week);
-  if(n===0){host.innerHTML='<div class="warnbar ok"><span class="wicon">✓</span> Sin conflictos esta semana<span class="count">OK</span></div>';}
-  else{host.innerHTML='<div class="warnbar bad"><span class="wicon">!</span> '+n+' aviso'+(n>1?'s':'')+' de reglas esta semana<span class="count">'+n+'</span></div>';}
+  var list=collectWarns(),n=list.length;
+  host.innerHTML='';
+  if(n===0){host.innerHTML='<div class="warnbar ok"><span class="wicon">✓</span> Sin conflictos esta semana<span class="count">OK</span></div>';return;}
+  var bar=el('<div class="warnbar bad" style="cursor:pointer"><span class="wicon">!</span> '+n+' aviso'+(n>1?'s':'')+' de reglas · toca para ver<span class="count">'+(state.warnsOpen?'▲':'▼')+'</span></div>');
+  bar.onclick=function(){state.warnsOpen=!state.warnsOpen;renderWarnbar();};
+  host.appendChild(bar);
+  if(state.warnsOpen){
+    var box=el('<div class="warnlist"></div>');
+    list.forEach(function(w){var it=el('<button class="warnitem"><b>'+WD[w.d]+'</b> '+esc(w.t)+'<span class="go">ver ›</span></button>');it.onclick=function(){gotoDay(w.d);};box.appendChild(it);});
+    host.appendChild(box);
+  }
 }
 
+function cortadoThisWeek(empId){for(var d=0;d<7;d++){if(getStatus(empId,state.week,d).st==='cortado')return true;}return false;}
+function filteredEmployees(){
+  var f=state.filters;
+  return employees.filter(function(e){
+    if(f.emp!=='all')return e.id===f.emp;
+    if(f.area!=='all'&&e.area!==f.area)return false;
+    if(f.turno!=='all'&&e.shift!==f.turno&&!cortadoThisWeek(e.id))return false;
+    return true;
+  });
+}
+function buildFilterBar(){
+  var f=state.filters,bar=el('<div class="filterbar"></div>');
+  var r1=el('<div class="fchips"><span class="fl">Turno</span></div>');
+  [['all','Todos'],['AM','AM'],['PM','PM']].forEach(function(o){var b=el('<button class="chip'+(f.turno===o[0]?' on':'')+'">'+o[1]+'</button>');b.onclick=function(){state.filters.turno=o[0];renderSemana();};r1.appendChild(b);});
+  bar.appendChild(r1);
+  var r2=el('<div class="fchips"><span class="fl">Área</span></div>');
+  [['all','Todas'],['piso','Piso'],['barra','Barra'],['cocina','Cocina']].forEach(function(o){var b=el('<button class="chip'+(f.area===o[0]?' on':'')+'">'+o[1]+'</button>');b.onclick=function(){state.filters.area=o[0];renderSemana();};r2.appendChild(b);});
+  bar.appendChild(r2);
+  var r3=el('<div class="fchips"><span class="fl">Empleado</span></div>');
+  var sel=el('<select class="fsel"></select>');sel.appendChild(el('<option value="all">Todos</option>'));
+  employees.slice().sort(function(a,b){return a.name.localeCompare(b.name);}).forEach(function(e){var op=el('<option value="'+e.id+'">'+esc(e.name)+'</option>');if(f.emp===e.id)op.selected=true;sel.appendChild(op);});
+  sel.onchange=function(){state.filters.emp=this.value;renderSemana();};
+  r3.appendChild(sel);bar.appendChild(r3);
+  return bar;
+}
 function renderSemana(){
   var host=document.getElementById('semanaView');host.innerHTML='';
-  var todayIso=iso(new Date());
-  ['AM','PM'].forEach(function(shift){
-    var emps=groupedEmployees(shift);
-    if(!emps.length)return;
-    var block=el('<div class="shiftblock"></div>');
-    block.appendChild(el('<div class="shifthead"><span class="pill '+shift+'">'+shift+'</span><span class="ttl">'+SHIFTS[shift].label+'</span><span class="tt">'+SHIFTS[shift].time+'</span></div>'));
-    var card=el('<div class="gridcard"><div class="gridscroll"></div></div>');
-    var grid=el('<div class="wgrid"></div>');
-    grid.appendChild(el('<div class="hcell corner">Empleado</div>'));
-    for(var d=0;d<7;d++){
-      var date=addDays(state.week,d);
-      var isToday=iso(date)===todayIso;
-      var cl=isClosed(state.week,d);
-      var h=el('<div class="hcell'+(isToday?' today':'')+(cl?' closed':'')+'" data-dayhead="'+d+'">'+(cl?'⊘ ':'')+WD[d]+'<small>'+date.getDate()+'</small></div>');
-      grid.appendChild(h);
-    }
-    emps.forEach(function(e){
+  host.appendChild(buildFilterBar());
+  var todayIso=iso(new Date()),list=filteredEmployees();
+  var card=el('<div class="gridcard"><div class="gridscroll"></div></div>');
+  var grid=el('<div class="wgrid"></div>');
+  grid.appendChild(el('<div class="hcell corner">Empleado</div>'));
+  for(var d=0;d<7;d++){
+    var date=addDays(state.week,d),isToday=iso(date)===todayIso,cl=isClosed(state.week,d);
+    grid.appendChild(el('<div class="hcell'+(isToday?' today':'')+(cl?' closed':'')+'" data-dayhead="'+d+'">'+(cl?'⊘ ':'')+WD[d]+'<small>'+date.getDate()+'</small></div>'));
+  }
+  AREA_ORDER.forEach(function(area){
+    var ge=list.filter(function(e){return e.area===area;}).sort(function(a,b){return a.shift.localeCompare(b.shift)||(b.mgr?1:0)-(a.mgr?1:0)||a.name.localeCompare(b.name);});
+    if(!ge.length)return;
+    grid.appendChild(el('<div class="grouprow">'+AREAS[area].short+'</div>'));
+    ge.forEach(function(e){
       var nc=el('<div class="namecell"></div>');
       nc.appendChild(el('<div class="rail" style="background:'+AREAS[e.area].color+'"></div>'));
-      nc.appendChild(el('<div class="nm">'+esc(e.name)+(e.mgr?' <span class="star">★</span>':'')+'</div>'));
+      nc.appendChild(el('<div class="nm">'+esc(e.name)+(e.mgr?' <span class="star">★</span>':'')+'<span class="shtag '+e.shift+'">'+e.shift+'</span></div>'));
       grid.appendChild(nc);
       for(var d=0;d<7;d++){
-        var date=addDays(state.week,d);
-        var isToday=iso(date)===todayIso;
         var s=effStatus(e.id,state.week,d);
-        var cell=el('<div class="cell '+s.st+(isToday?' todaycol':'')+'" data-emp="'+e.id+'" data-day="'+d+'"></div>');
+        var cell=el('<div class="cell '+s.st+'" data-emp="'+e.id+'" data-day="'+d+'"></div>');
         cell.appendChild(el('<span class="tag">'+shortLabel(s.st)+'</span>'));
         if(s.cover){var cv=employees.filter(function(x){return x.id===s.cover;})[0];if(cv)cell.appendChild(el('<span class="cov">↩ '+esc(cv.name.split(' ')[0])+'</span>'));}
         grid.appendChild(cell);
       }
     });
-    var scroll=card.querySelector('.gridscroll');scroll.appendChild(grid);
-    block.appendChild(card);host.appendChild(block);
   });
-  host.querySelectorAll('.cell[data-emp]').forEach(function(c){
-    c.addEventListener('click',function(){openCellSheet(c.getAttribute('data-emp'),parseInt(c.getAttribute('data-day'),10));});
-  });
+  card.querySelector('.gridscroll').appendChild(grid);host.appendChild(card);
+  if(!list.length)host.appendChild(el('<div class="emptynote">Sin empleados con estos filtros.</div>'));
+  host.querySelectorAll('.cell[data-emp]').forEach(function(c){c.addEventListener('click',function(){openCellSheet(c.getAttribute('data-emp'),parseInt(c.getAttribute('data-day'),10));});});
   host.querySelectorAll('.hcell[data-dayhead]').forEach(function(h){
     h.style.cursor='pointer';
     h.addEventListener('click',function(){
-      var d=parseInt(h.getAttribute('data-dayhead'),10);
-      var date=addDays(state.week,d);
-      var nowClosed=isClosed(state.week,d);
+      var d=parseInt(h.getAttribute('data-dayhead'),10),date=addDays(state.week,d),nowClosed=isClosed(state.week,d);
       var msg=nowClosed?'¿Reabrir '+WD_FULL[d]+' '+date.getDate()+'?':'¿Cerrar '+WD_FULL[d]+' '+date.getDate()+' por mantenimiento? Todos quedan en descanso.';
       if(confirm(msg)){toggleClosed(state.week,d);renderCalendar();toast(nowClosed?'Día reabierto':'Día cerrado');}
     });
