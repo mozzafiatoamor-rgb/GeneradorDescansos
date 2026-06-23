@@ -483,7 +483,7 @@ var SEED=[
 ];
 
 /* ---------- data ---------- */
-var employees=[], base={}, weeks={}, closed={}, payroll={}, cfg={biz:'Mi negocio',defRest:1};
+var employees=[], base={}, weeks={}, closedDays={}, payroll={}, cfg={biz:'Mi negocio',defRest:1};
 function uid(){return 'e'+Math.random().toString(36).slice(2,9);}
 function seedEmployees(){return SEED.map(function(s){return {id:uid(),name:s[0],shift:s[1],area:s[2],mgr:s[3]};});}
 function isObj(o){return o&&typeof o==='object'&&!Array.isArray(o);}
@@ -492,12 +492,12 @@ function loadData(){
   if(!Array.isArray(employees)||!employees.length){employees=seedEmployees();store.set(K.emp,employees);}
   base=store.get(K.base,null); if(!isObj(base))base=null;
   weeks=store.get(K.weeks,{}); if(!isObj(weeks))weeks={};
-  closed=store.get(K.closed,{}); if(!isObj(closed))closed={};
+  closedDays=store.get(K.closed,{}); if(!isObj(closedDays))closedDays={};
   payroll=store.get(K.pay,{}); if(!isObj(payroll))payroll={};
   cfg=store.get(K.cfg,null); if(!isObj(cfg))cfg={biz:'Mi negocio',defRest:1};
   if(!base){base=generateBase();store.set(K.base,base);}
 }
-function save(){store.set(K.emp,employees);store.set(K.base,base);store.set(K.weeks,weeks);store.set(K.closed,closed);store.set(K.pay,payroll);store.set(K.cfg,cfg);}
+function save(){store.set(K.emp,employees);store.set(K.base,base);store.set(K.weeks,weeks);store.set(K.closed,closedDays);store.set(K.pay,payroll);store.set(K.cfg,cfg);}
 
 /* ---------- dates ---------- */
 function startOfWeek(d){var x=new Date(d.getFullYear(),d.getMonth(),d.getDate());var k=(x.getDay()+6)%7;x.setDate(x.getDate()-k);return x;}
@@ -532,8 +532,8 @@ function setStatus(empId,mon,dayIdx,obj){
   save();
 }
 function resetWeek(mon){delete weeks[weekKey(mon)];save();}
-function isClosed(mon,dayIdx){return !!closed[iso(addDays(mon,dayIdx))];}
-function toggleClosed(mon,dayIdx){var d=iso(addDays(mon,dayIdx));if(closed[d])delete closed[d];else closed[d]=true;save();}
+function isClosed(mon,dayIdx){return !!closedDays[iso(addDays(mon,dayIdx))];}
+function toggleClosed(mon,dayIdx){var d=iso(addDays(mon,dayIdx));if(closedDays[d])delete closedDays[d];else closedDays[d]=true;save();}
 function effStatus(empId,mon,dayIdx){if(isClosed(mon,dayIdx))return {st:'closed'};return getStatus(empId,mon,dayIdx);}
 
 /* ---------- generator ---------- */
@@ -1153,7 +1153,7 @@ document.getElementById('genBtn').addEventListener('click',function(){
   base=generateBase();save();renderPlantilla();renderCalendar();toast('Patrón base generado');
 });
 document.getElementById('exportBtn').addEventListener('click',function(){
-  var data={employees:employees,base:base,weeks:weeks,closed:closed,payroll:payroll,cfg:cfg,v:1};
+  var data={employees:employees,base:base,weeks:weeks,closed:closedDays,payroll:payroll,cfg:cfg,v:1};
   var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   var a=document.createElement('a');a.href=URL.createObjectURL(blob);
   a.download='descansos-respaldo-'+iso(new Date())+'.json';a.click();
@@ -1163,7 +1163,7 @@ document.getElementById('importBtn').addEventListener('click',function(){documen
 document.getElementById('importFile').addEventListener('change',function(ev){
   var f=ev.target.files[0];if(!f)return;var r=new FileReader();
   r.onload=function(){try{var d=JSON.parse(r.result);
-    if(d.employees)employees=d.employees;if(d.base)base=d.base;if(d.weeks)weeks=d.weeks;if(d.closed)closed=d.closed;if(d.payroll)payroll=d.payroll;if(d.cfg)cfg=d.cfg;
+    if(d.employees)employees=d.employees;if(d.base)base=d.base;if(d.weeks)weeks=d.weeks;if(d.closed)closedDays=d.closed;if(d.payroll)payroll=d.payroll;if(d.cfg)cfg=d.cfg;
     save();renderCalendar();renderPlantilla();renderAjustes();if(state.tab==='nomina')renderNomina();toast('Datos importados');
   }catch(e){toast('Archivo no válido');}};r.readAsText(f);
   ev.target.value='';
@@ -1176,7 +1176,7 @@ document.getElementById('resetBtn').addEventListener('click',function(){
 
 /* ---------- boot ---------- */
 function calendarDrawn(){return !!document.querySelector('#semanaView .cell');}
-function hardReseed(){try{localStorage.removeItem(K.emp);localStorage.removeItem(K.base);localStorage.removeItem(K.weeks);localStorage.removeItem(K.closed);localStorage.removeItem(K.pay);localStorage.removeItem(K.cfg);}catch(e){}mem={};employees=null;base=null;weeks={};closed={};payroll={};cfg=null;loadData();}
+function hardReseed(){try{localStorage.removeItem(K.emp);localStorage.removeItem(K.base);localStorage.removeItem(K.weeks);localStorage.removeItem(K.closed);localStorage.removeItem(K.pay);localStorage.removeItem(K.cfg);}catch(e){}mem={};employees=null;base=null;weeks={};closedDays={};payroll={};cfg=null;loadData();}
 function showFatal(msg){
   try{
     if(document.getElementById('fatalBar'))return;
