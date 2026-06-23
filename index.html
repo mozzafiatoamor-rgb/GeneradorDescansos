@@ -709,9 +709,10 @@ function renderSemana(){
     if(!ge.length)return;
     grid.appendChild(el('<div class="grouprow">'+AREAS[area].short+'</div>'));
     ge.forEach(function(e){
-      var nc=el('<div class="namecell"></div>');
+      var nc=el('<div class="namecell" style="cursor:pointer"></div>');
       nc.appendChild(el('<div class="rail" style="background:'+AREAS[e.area].color+'"></div>'));
       nc.appendChild(el('<div class="nm">'+esc(e.name)+(e.mgr?' <span class="star">★</span>':'')+'<span class="shtag '+e.shift+'">'+e.shift+'</span></div>'));
+      nc.onclick=(function(id){return function(){openEmpSheet(id);};})(e.id);
       grid.appendChild(nc);
       for(var d=0;d<7;d++){
         var s=effStatus(e.id,state.week,d);
@@ -788,7 +789,8 @@ function renderDia(){
       emps.forEach(function(e){
         var s=effStatus(e.id,state.week,state.dayIdx);
         var row=el('<div class="erow" data-emp="'+e.id+'" data-day="'+state.dayIdx+'"></div>');
-        var nm=el('<div class="nm">'+esc(e.name)+(e.mgr?' <span class="star">★</span>':'')+'</div>');
+        var nm=el('<div class="nm" style="cursor:pointer">'+esc(e.name)+(e.mgr?' <span class="star">★</span>':'')+'</div>');
+        nm.onclick=(function(id){return function(ev){ev.stopPropagation();openEmpSheet(id);};})(e.id);
         if(s.cover){var cv=employees.filter(function(x){return x.id===s.cover;})[0];if(cv)nm.appendChild(el('<span class="covnote">Cubre el lugar de '+esc(cv.name)+'</span>'));}
         row.appendChild(nm);
         row.appendChild(el('<span class="statetag '+s.st+'">'+tagLabel(s.st)+'</span>'));
@@ -1193,7 +1195,7 @@ document.getElementById('nav-plantilla').addEventListener('click',function(){set
 document.getElementById('nav-nomina').addEventListener('click',function(){setTab('nomina');});
 document.getElementById('nav-ajustes').addEventListener('click',function(){setTab('ajustes');});
 document.getElementById('addEmpFab').addEventListener('click',function(){openEmpSheet(null);});
-document.getElementById('printBtn').addEventListener('click',function(){if(state.tab==='nomina')buildPayrollPrint();else buildPrint();setTimeout(function(){window.print();},60);});
+document.getElementById('printBtn').addEventListener('click',function(){if(state.tab==='nomina')buildPayrollPrint();else buildPrint();window.print();});
 
 document.getElementById('bizInput').addEventListener('input',function(){cfg.biz=this.value;save();document.getElementById('bizName').textContent=cfg.biz||'Mi negocio';});
 document.getElementById('defRest').addEventListener('change',function(){cfg.defRest=parseInt(this.value,10);save();});
