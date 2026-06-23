@@ -485,14 +485,16 @@ var SEED=[
 /* ---------- data ---------- */
 var employees, base, weeks, cfg, closed, payroll;
 function uid(){return 'e'+Math.random().toString(36).slice(2,9);}
+function seedEmployees(){return SEED.map(function(s){return {id:uid(),name:s[0],shift:s[1],area:s[2],mgr:s[3]};});}
+function isObj(o){return o&&typeof o==='object'&&!Array.isArray(o);}
 function loadData(){
   employees=store.get(K.emp,null);
-  if(!employees){employees=SEED.map(function(s){return {id:uid(),name:s[0],shift:s[1],area:s[2],mgr:s[3]};});store.set(K.emp,employees);}
-  base=store.get(K.base,null);
-  weeks=store.get(K.weeks,{});
-  closed=store.get(K.closed,{});
-  payroll=store.get(K.pay,{});
-  cfg=store.get(K.cfg,{biz:'Mi negocio',defRest:1});
+  if(!Array.isArray(employees)||!employees.length){employees=seedEmployees();store.set(K.emp,employees);}
+  base=store.get(K.base,null); if(!isObj(base))base=null;
+  weeks=store.get(K.weeks,{}); if(!isObj(weeks))weeks={};
+  closed=store.get(K.closed,{}); if(!isObj(closed))closed={};
+  payroll=store.get(K.pay,{}); if(!isObj(payroll))payroll={};
+  cfg=store.get(K.cfg,null); if(!isObj(cfg))cfg={biz:'Mi negocio',defRest:1};
   if(!base){base=generateBase();store.set(K.base,base);}
 }
 function save(){store.set(K.emp,employees);store.set(K.base,base);store.set(K.weeks,weeks);store.set(K.closed,closed);store.set(K.pay,payroll);store.set(K.cfg,cfg);}
@@ -1159,25 +1161,26 @@ document.getElementById('resetBtn').addEventListener('click',function(){
 });
 
 /* ---------- boot ---------- */
+function calendarDrawn(){return !!document.querySelector('#semanaView .cell');}
+function hardReseed(){try{localStorage.removeItem(K.emp);localStorage.removeItem(K.base);localStorage.removeItem(K.weeks);localStorage.removeItem(K.closed);localStorage.removeItem(K.pay);localStorage.removeItem(K.cfg);}catch(e){}mem={};employees=null;base=null;weeks={};closed={};payroll={};cfg=null;loadData();}
 function showFatal(msg){
   try{
     if(document.getElementById('fatalBar'))return;
     var b=document.createElement('div');b.id='fatalBar';
     b.style.cssText='position:fixed;left:0;right:0;top:0;z-index:9999;background:#FBEDE9;color:#7E2B17;padding:16px;font:14px/1.45 system-ui,sans-serif;border-bottom:3px solid #C4452C;box-shadow:0 4px 16px rgba(0,0,0,.15)';
-    b.innerHTML='<b>No se pudo cargar la app.</b><br>Intenta abrirla desde su URL de GitHub Pages y recargar.<br><span style="font-size:12px;opacity:.8">Detalle: '+esc(String(msg)).slice(0,300)+'</span><br><button id="fatalReset" style="margin-top:10px;padding:9px 14px;border:1px solid #C4452C;border-radius:9px;background:#fff;color:#7E2B17;font-weight:700">Reiniciar datos</button>';
+    b.innerHTML='<b>No se pudo dibujar la app.</b><br>Tu navegador puede estar mostrando una versión vieja en caché. Abre la URL con <b>?v=5</b> al final, o borra los datos del sitio.<br><span style="font-size:12px;opacity:.8;word-break:break-word">Detalle: '+esc(String(msg)).slice(0,400)+'</span><br><button id="fatalReset" style="margin-top:10px;padding:9px 14px;border:1px solid #C4452C;border-radius:9px;background:#fff;color:#7E2B17;font-weight:700">Reiniciar datos</button>';
     document.body.appendChild(b);
     var fr=document.getElementById('fatalReset');if(fr)fr.onclick=function(){try{localStorage.clear();}catch(e){}location.reload();};
   }catch(e){}
 }
-try{
-  loadData();
-  setTab('cal');
-  // Verificación real: solo avisa si de verdad no se dibujó nada teniendo empleados.
-  if(employees&&employees.length&&!document.querySelector('#semanaView .cell')){
-    renderCalendar();
-    if(!document.querySelector('#semanaView .cell'))showFatal('El calendario no se dibujó.');
+(function boot(){
+  var lastErr=null;
+  try{loadData();setTab('cal');}catch(e){lastErr=e;try{hardReseed();setTab('cal');}catch(e2){lastErr=e2;}}
+  if(!calendarDrawn()){
+    try{hardReseed();setTab('cal');}catch(e){lastErr=e;}
   }
-}catch(err){showFatal((err&&(err.stack||err.message))||err);}
+  if(!calendarDrawn())showFatal((lastErr&&(lastErr.stack||lastErr.message))||'El calendario quedó vacío.');
+})();
 </script>
 </body>
 </html>
