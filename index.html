@@ -1164,13 +1164,20 @@ function showFatal(msg){
     if(document.getElementById('fatalBar'))return;
     var b=document.createElement('div');b.id='fatalBar';
     b.style.cssText='position:fixed;left:0;right:0;top:0;z-index:9999;background:#FBEDE9;color:#7E2B17;padding:16px;font:14px/1.45 system-ui,sans-serif;border-bottom:3px solid #C4452C;box-shadow:0 4px 16px rgba(0,0,0,.15)';
-    b.innerHTML='<b>No se pudo cargar la app.</b><br>Lo más seguro: ábrela desde su URL en GitHub Pages (no como archivo descargado).<br><span style="font-size:12px;opacity:.8">Detalle: '+esc(String(msg)).slice(0,300)+'</span><br><button id="fatalReset" style="margin-top:10px;padding:9px 14px;border:1px solid #C4452C;border-radius:9px;background:#fff;color:#7E2B17;font-weight:700">Reiniciar datos</button>';
+    b.innerHTML='<b>No se pudo cargar la app.</b><br>Intenta abrirla desde su URL de GitHub Pages y recargar.<br><span style="font-size:12px;opacity:.8">Detalle: '+esc(String(msg)).slice(0,300)+'</span><br><button id="fatalReset" style="margin-top:10px;padding:9px 14px;border:1px solid #C4452C;border-radius:9px;background:#fff;color:#7E2B17;font-weight:700">Reiniciar datos</button>';
     document.body.appendChild(b);
     var fr=document.getElementById('fatalReset');if(fr)fr.onclick=function(){try{localStorage.clear();}catch(e){}location.reload();};
   }catch(e){}
 }
-window.addEventListener('error',function(ev){showFatal((ev&&ev.message)||(ev&&ev.error&&ev.error.message)||'Error');});
-try{loadData();setTab('cal');}catch(err){showFatal((err&&(err.stack||err.message))||err);}
+try{
+  loadData();
+  setTab('cal');
+  // Verificación real: solo avisa si de verdad no se dibujó nada teniendo empleados.
+  if(employees&&employees.length&&!document.querySelector('#semanaView .cell')){
+    renderCalendar();
+    if(!document.querySelector('#semanaView .cell'))showFatal('El calendario no se dibujó.');
+  }
+}catch(err){showFatal((err&&(err.stack||err.message))||err);}
 </script>
 </body>
 </html>
