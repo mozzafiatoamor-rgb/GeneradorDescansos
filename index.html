@@ -345,10 +345,13 @@ h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em}
 <header class="topbar">
   <div class="brandrow">
     <div class="brand">
-      <span class="glyph"><i></i><i></i><i></i></span>
-      <div style="min-width:0">
-        <h1>Descansos</h1>
-        <div class="biz" id="bizName">Mi negocio</div>
+      <img id="brandLogo" src="logo.png" alt="logo" style="height:38px;width:auto;max-width:200px;display:block;object-fit:contain" onerror="this.style.display='none';var f=document.getElementById('brandFallback');if(f)f.style.display='flex';">
+      <div id="brandFallback" style="display:none;align-items:center;gap:10px">
+        <span class="glyph"><i></i><i></i><i></i></span>
+        <div style="min-width:0">
+          <h1>Descansos</h1>
+          <div class="biz" id="bizName">Mi negocio</div>
+        </div>
       </div>
     </div>
     <button class="iconbtn" id="printBtn" title="Imprimir / PDF">⎙</button>
@@ -1155,7 +1158,7 @@ function buildPrint(){
   var n=weekWarnCount(state.week);
   if(n>0){html+='<div class="pwarn"><b>Avisos:</b> ';var all=[];for(var d=0;d<7;d++){validateDay(state.week,d).forEach(function(w){all.push(WD[d]+': '+w);});}html+=all.map(esc).join(' · ')+'</div>';}
   html+='<div class="pleg"><span>■ Descanso</span><span>▨ Cortado (8–12 + 20–24)</span><span>★ Encargado</span></div>';
-  pa.innerHTML=html;
+  pa.innerHTML=html;return html;
 }
 
 function buildPayrollPrint(){
@@ -1181,7 +1184,19 @@ function buildPayrollPrint(){
   });
   html+='</tbody></table>';
   html+='<div class="paytotal">Total nómina de la semana: <b>'+fmtMoney(grand)+'</b></div>';
-  pa.innerHTML=html;
+  pa.innerHTML=html;return html;
+}
+function printDoc(inner){
+  var css='@page{size:letter landscape;margin:11mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#000;margin:0}h2{font-size:18px;margin:0 0 2px}.psub{font-size:11px;color:#444;margin:0 0 10px}table{width:100%;border-collapse:collapse;table-layout:fixed;margin-bottom:8px}th,td{border:1px solid #999;padding:4px 3px;font-size:9.5px;text-align:center;vertical-align:middle;word-wrap:break-word}th.nm,td.nm{text-align:left;width:120px;font-weight:600}thead th{background:#222;color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}td.rest{background:#EF4E5B;color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-weight:700}td.cortado{background:#FBE4BB;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-weight:700}td.closed{background:#D9D6CF;color:#444;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-weight:700}tr.grouprow td{background:#EFEDE7;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-weight:700;text-align:left;font-size:10px}tr.subrow td{background:#EFEDE7;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-weight:700}.paytbl td.net{font-weight:700}.paytotal{margin-top:12px;font-size:14px;text-align:right}.pleg{margin-top:10px;font-size:10px;display:flex;gap:18px}.pwarn{margin-top:8px;font-size:10px;color:#9A331C}';
+  var f=document.createElement('iframe');f.setAttribute('aria-hidden','true');
+  f.style.cssText='position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0';
+  document.body.appendChild(f);
+  var d=f.contentWindow.document;d.open();
+  d.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+esc((cfg&&cfg.biz)||'Impresión')+'</title><style>'+css+'</style></head><body>'+inner+'</body></html>');
+  d.close();
+  var fw=f.contentWindow;
+  function go(){try{fw.focus();fw.print();}catch(e){}setTimeout(function(){if(f.parentNode)f.parentNode.removeChild(f);},1000);}
+  if(d.readyState==='complete')setTimeout(go,250);else fw.onload=function(){setTimeout(go,250);};
 }
 
 /* ---------- events ---------- */
@@ -1195,7 +1210,7 @@ document.getElementById('nav-plantilla').addEventListener('click',function(){set
 document.getElementById('nav-nomina').addEventListener('click',function(){setTab('nomina');});
 document.getElementById('nav-ajustes').addEventListener('click',function(){setTab('ajustes');});
 document.getElementById('addEmpFab').addEventListener('click',function(){openEmpSheet(null);});
-document.getElementById('printBtn').addEventListener('click',function(){if(state.tab==='nomina')buildPayrollPrint();else buildPrint();window.print();});
+document.getElementById('printBtn').addEventListener('click',function(){var html=state.tab==='nomina'?buildPayrollPrint():buildPrint();printDoc(html);});
 
 document.getElementById('bizInput').addEventListener('input',function(){cfg.biz=this.value;save();document.getElementById('bizName').textContent=cfg.biz||'Mi negocio';});
 document.getElementById('defRest').addEventListener('change',function(){cfg.defRest=parseInt(this.value,10);save();});
