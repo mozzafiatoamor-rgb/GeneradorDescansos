@@ -522,7 +522,7 @@ function fmtRange(mon){var sun=addDays(mon,6);
   var b=sun.getDate()+' '+MONTHS[sun.getMonth()];
   return a+' – '+b;}
 var today=new Date();
-var state={week:startOfWeek(today),view:'semana',dayIdx:(today.getDay()+6)%7,tab:'cal',filters:{turno:'all',area:'all',emp:'all'},warnsOpen:false};
+var state={week:startOfWeek(today),view:'semana',dayIdx:(today.getDay()+6)%7,tab:'cal',filters:{turno:'all',area:'all',emp:'all',estado:'all'},warnsOpen:false};
 
 /* ---------- status resolution ---------- */
 function weekKey(mon){return iso(mon);}
@@ -661,28 +661,36 @@ function renderWarnbar(){
 }
 
 function cortadoThisWeek(empId){for(var d=0;d<7;d++){if(getStatus(empId,state.week,d).st==='cortado')return true;}return false;}
-function filteredEmployees(){
+function statusMatchesEstado(st,estado){var working=(st==='work'||st==='cortado');return estado==='trabajan'?working:estado==='descansan'?!working:true;}
+function matchFilters(e,dayIdx){
   var f=state.filters;
-  return employees.filter(function(e){
-    if(f.emp!=='all')return e.id===f.emp;
-    if(f.area!=='all'&&e.area!==f.area)return false;
-    if(f.turno!=='all'&&e.shift!==f.turno&&!cortadoThisWeek(e.id))return false;
-    return true;
-  });
+  if(f.emp!=='all')return e.id===f.emp;
+  if(f.area!=='all'&&e.area!==f.area)return false;
+  if(f.turno!=='all'&&e.shift!==f.turno&&!cortadoThisWeek(e.id))return false;
+  if(f.estado!=='all'){
+    if(dayIdx==null){var any=false;for(var d=0;d<7;d++){if(statusMatchesEstado(effStatus(e.id,state.week,d).st,f.estado)){any=true;break;}}if(!any)return false;}
+    else if(!statusMatchesEstado(effStatus(e.id,state.week,dayIdx).st,f.estado))return false;
+  }
+  return true;
 }
+function filteredEmployees(){return employees.filter(function(e){return matchFilters(e,null);});}
+function render(){renderCalendar();}
 function buildFilterBar(){
   var f=state.filters,bar=el('<div class="filterbar"></div>');
   var r1=el('<div class="fchips"><span class="fl">Turno</span></div>');
-  [['all','Todos'],['AM','AM'],['PM','PM']].forEach(function(o){var b=el('<button class="chip'+(f.turno===o[0]?' on':'')+'">'+o[1]+'</button>');b.onclick=function(){state.filters.turno=o[0];renderSemana();};r1.appendChild(b);});
+  [['all','Todos'],['AM','AM'],['PM','PM']].forEach(function(o){var b=el('<button class="chip'+(f.turno===o[0]?' on':'')+'">'+o[1]+'</button>');b.onclick=function(){state.filters.turno=o[0];render();};r1.appendChild(b);});
   bar.appendChild(r1);
   var r2=el('<div class="fchips"><span class="fl">Área</span></div>');
-  [['all','Todas'],['piso','Piso'],['barra','Barra'],['cocina','Cocina']].forEach(function(o){var b=el('<button class="chip'+(f.area===o[0]?' on':'')+'">'+o[1]+'</button>');b.onclick=function(){state.filters.area=o[0];renderSemana();};r2.appendChild(b);});
+  [['all','Todas'],['piso','Piso'],['barra','Barra'],['cocina','Cocina']].forEach(function(o){var b=el('<button class="chip'+(f.area===o[0]?' on':'')+'">'+o[1]+'</button>');b.onclick=function(){state.filters.area=o[0];render();};r2.appendChild(b);});
   bar.appendChild(r2);
   var r3=el('<div class="fchips"><span class="fl">Empleado</span></div>');
   var sel=el('<select class="fsel"></select>');sel.appendChild(el('<option value="all">Todos</option>'));
   employees.slice().sort(function(a,b){return a.name.localeCompare(b.name);}).forEach(function(e){var op=el('<option value="'+e.id+'">'+esc(e.name)+'</option>');if(f.emp===e.id)op.selected=true;sel.appendChild(op);});
-  sel.onchange=function(){state.filters.emp=this.value;renderSemana();};
+  sel.onchange=function(){state.filters.emp=this.value;render();};
   r3.appendChild(sel);bar.appendChild(r3);
+  var r4=el('<div class="fchips"><span class="fl">Estado</span></div>');
+  [['all','Todos'],['trabajan','Trabajan'],['descansan','Descansan']].forEach(function(o){var b=el('<button class="chip'+(f.estado===o[0]?' on':'')+'">'+o[1]+'</button>');b.onclick=function(){state.filters.estado=o[0];render();};r4.appendChild(b);});
+  bar.appendChild(r4);
   return bar;
 }
 function renderSemana(){
@@ -729,6 +737,7 @@ function renderSemana(){
 
 function renderDia(){
   var host=document.getElementById('diaView');host.innerHTML='';
+  host.appendChild(buildFilterBar());
   // day picker
   var pick=el('<div class="daypick"></div>');
   var todayIso=iso(new Date());
@@ -766,7 +775,7 @@ function renderDia(){
     if(!anyShift)return;
     host.appendChild(el('<div class="shifthead" style="padding-top:6px"><span class="pill '+shift+'">'+shift+'</span><span class="ttl">'+SHIFTS[shift].label+'</span><span class="tt">'+SHIFTS[shift].time+'</span></div>'));
     AREA_ORDER.forEach(function(area){
-      var emps=employees.filter(function(e){return e.shift===shift&&e.area===area;})
+      var emps=employees.filter(function(e){return e.shift===shift&&e.area===area&&matchFilters(e,state.dayIdx);})
         .sort(function(a,b){return (b.mgr?1:0)-(a.mgr?1:0)||a.name.localeCompare(b.name);});
       if(!emps.length)return;
       // crew count for this area+shift
