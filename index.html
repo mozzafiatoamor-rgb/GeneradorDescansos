@@ -483,7 +483,7 @@ var SEED=[
 ];
 
 /* ---------- data ---------- */
-var employees, base, weeks, cfg, closed, payroll;
+var employees=[], base={}, weeks={}, closed={}, payroll={}, cfg={biz:'Mi negocio',defRest:1};
 function uid(){return 'e'+Math.random().toString(36).slice(2,9);}
 function seedEmployees(){return SEED.map(function(s){return {id:uid(),name:s[0],shift:s[1],area:s[2],mgr:s[3]};});}
 function isObj(o){return o&&typeof o==='object'&&!Array.isArray(o);}
@@ -623,14 +623,14 @@ function groupedEmployees(shift){
 }
 
 function renderHeader(){
-  document.getElementById('bizName').textContent=cfg.biz||'Mi negocio';
-  document.getElementById('weekRange').textContent=fmtRange(state.week);
+  var bn=document.getElementById('bizName');if(bn)bn.textContent=(cfg&&cfg.biz)||'Mi negocio';
+  var wr=document.getElementById('weekRange');if(wr)wr.textContent=fmtRange(state.week);
   var sameAsThis=iso(state.week)===iso(startOfWeek(new Date()));
-  document.getElementById('weekSub').textContent=sameAsThis?'Semana actual':'Semana del '+state.week.getFullYear();
+  var ws=document.getElementById('weekSub');if(ws)ws.textContent=sameAsThis?'Semana actual':'Semana del '+state.week.getFullYear();
 }
 
 function renderWarnbar(){
-  var host=document.getElementById('warnbarHost');
+  var host=document.getElementById('warnbarHost');if(!host)return;
   var n=weekWarnCount(state.week);
   if(n===0){host.innerHTML='<div class="warnbar ok"><span class="wicon">✓</span> Sin conflictos esta semana<span class="count">OK</span></div>';}
   else{host.innerHTML='<div class="warnbar bad"><span class="wicon">!</span> '+n+' aviso'+(n>1?'s':'')+' de reglas esta semana<span class="count">'+n+'</span></div>';}
@@ -753,11 +753,22 @@ function renderDia(){
   });
 }
 
+function showRenderError(containerId,e){
+  var h=document.getElementById(containerId);if(!h)return;
+  h.style.display='block';
+  h.innerHTML='<div style="margin:8px 0;padding:14px;color:#9A331C;font-size:13px;line-height:1.5;background:#FBEDE9;border:1px solid #F1D3C9;border-radius:12px">'+
+    '<b>Error al dibujar esta sección.</b> Mándame este texto y lo arreglo:<br><br>'+
+    '<code style="font-size:12px;word-break:break-word">'+esc(String((e&&(e.message))||e))+'</code>'+
+    '<div style="font-size:11px;opacity:.7;margin-top:6px;word-break:break-word">'+esc(String((e&&e.stack)||'')).slice(0,400)+'</div></div>';
+}
 function renderCalendar(){
-  renderHeader();renderWarnbar();
-  document.getElementById('semanaView').style.display=state.view==='semana'?'block':'none';
-  document.getElementById('diaView').style.display=state.view==='dia'?'block':'none';
-  if(state.view==='semana')renderSemana();else renderDia();
+  try{
+    renderHeader();renderWarnbar();
+    var sv=document.getElementById('semanaView'),dv=document.getElementById('diaView');
+    if(sv)sv.style.display=state.view==='semana'?'block':'none';
+    if(dv)dv.style.display=state.view==='dia'?'block':'none';
+    if(state.view==='semana')renderSemana();else renderDia();
+  }catch(e){showRenderError('semanaView',e);}
 }
 
 /* ---------- plantilla ---------- */
@@ -917,16 +928,19 @@ function toast(msg){toastEl.textContent=msg;toastEl.classList.add('show');clearT
 function setTab(t){
   state.tab=t;
   ['cal','plantilla','nomina','ajustes'].forEach(function(x){
-    document.getElementById('tab-'+x).classList.toggle('show',x===t);
-    document.getElementById('nav-'+x).classList.toggle('on',x===t);
+    var tp=document.getElementById('tab-'+x),nv=document.getElementById('nav-'+x);
+    if(tp)tp.classList.toggle('show',x===t);
+    if(nv)nv.classList.toggle('on',x===t);
   });
-  document.getElementById('calControls').style.display=t==='cal'?'block':'none';
-  document.getElementById('printBtn').style.display=(t==='cal'||t==='nomina')?'grid':'none';
-  document.getElementById('addEmpFab').style.display=t==='plantilla'?'flex':'none';
-  if(t==='cal')renderCalendar();
-  if(t==='plantilla')renderPlantilla();
-  if(t==='nomina')renderNomina();
-  if(t==='ajustes')renderAjustes();
+  var cc=document.getElementById('calControls');if(cc)cc.style.display=t==='cal'?'block':'none';
+  var pb=document.getElementById('printBtn');if(pb)pb.style.display=(t==='cal'||t==='nomina')?'grid':'none';
+  var fab=document.getElementById('addEmpFab');if(fab)fab.style.display=t==='plantilla'?'flex':'none';
+  try{
+    if(t==='cal')renderCalendar();
+    else if(t==='plantilla')renderPlantilla();
+    else if(t==='nomina')renderNomina();
+    else if(t==='ajustes')renderAjustes();
+  }catch(e){showRenderError(t==='cal'?'semanaView':t==='plantilla'?'plantillaList':t==='nomina'?'nominaContent':'tab-ajustes',e);}
   window.scrollTo(0,0);
 }
 
@@ -1174,12 +1188,10 @@ function showFatal(msg){
   }catch(e){}
 }
 (function boot(){
-  var lastErr=null;
-  try{loadData();setTab('cal');}catch(e){lastErr=e;try{hardReseed();setTab('cal');}catch(e2){lastErr=e2;}}
-  if(!calendarDrawn()){
-    try{hardReseed();setTab('cal');}catch(e){lastErr=e;}
-  }
-  if(!calendarDrawn())showFatal((lastErr&&(lastErr.stack||lastErr.message))||'El calendario quedó vacío.');
+  try{loadData();}
+  catch(e){try{hardReseed();}catch(e2){}}
+  try{setTab('cal');}
+  catch(e){showRenderError('semanaView',e);}
 })();
 </script>
 </body>
