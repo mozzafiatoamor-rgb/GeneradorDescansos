@@ -110,6 +110,7 @@ h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em}
 .wgrid .grouprow{grid-column:1/-1;background:#F3F1EC;font-family:var(--disp);font-weight:700;font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:5px 12px;border-top:1px solid var(--line)}
 .namecell .shtag{font-size:8.5px;font-weight:700;padding:1px 5px;border-radius:99px;margin-left:4px;vertical-align:middle}
 .shtag.AM{background:#F3E6D6;color:#9A5B1A}.shtag.PM{background:#E2E6EE;color:#3F4756}
+.shtag.chg{background:#F0E0E7;color:#8A2E50}
 .filterbar{display:flex;flex-direction:column;gap:7px;margin-bottom:12px}
 .fchips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .fchips .fl{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;width:62px;flex:0 0 62px}
@@ -135,6 +136,7 @@ h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em}
 .cell.medio .tag{color:#2C5278;font-weight:700}
 .cell.closed{background:#ECEAE4;color:#8A857A}
 .cell.off{background:#FCFCFB;color:#CBC7BF}
+.cell.off.moved{background:#FBF3F6}.cell.off.moved .tag{color:#A85B7C;font-size:8.5px;font-weight:700;font-style:italic}
 .cell.closed .tag{color:#8A857A;font-weight:700}
 
 /* ===== Day view ===== */
@@ -683,10 +685,14 @@ function inShiftThatDay(e,shift,day){var o=getStatus(e.id,state.week,day);
 function cellInTurno(e,day,turno){var o=effStatus(e.id,state.week,day);
   if(o.st==='closed')return {st:'closed'};
   if(o.st==='rest')return e.shift===turno?{st:'rest',cover:o.cover}:{st:'off'};
-  if(o.st==='work')return (o.shift||e.shift)===turno?{st:'work'}:{st:'off'};
-  if(o.st==='medio')return ((turno==='AM'&&o.am)||(turno==='PM'&&o.pm))?{st:'medio',am:o.am,pm:o.pm}:{st:'off'};
+  if(o.st==='work'){var ws=o.shift||e.shift;return ws===turno?{st:'work'}:{st:'off',moved:ws};}
+  if(o.st==='medio'){var here=(turno==='AM'&&o.am)||(turno==='PM'&&o.pm);if(here)return {st:'medio',am:o.am,pm:o.pm};return {st:'off',moved:o.am?'AM':'PM'};}
   if(o.st==='cortado')return {st:'cortado'};
   return {st:'off'};}
+function doubleSomeDay(e){for(var d=0;d<7;d++){var o=getStatus(e.id,state.week,d);
+  var am=(o.st==='work'&&(o.shift||e.shift)==='AM')||(o.st==='medio'&&o.am)||o.st==='cortado';
+  var pm=(o.st==='work'&&(o.shift||e.shift)==='PM')||(o.st==='medio'&&o.pm)||o.st==='cortado';
+  if(am&&pm)return true;}return false;}
 function statusMatchesEstado(st,estado){var working=(st==='work'||st==='cortado'||st==='medio');return estado==='trabajan'?working:estado==='descansan'?!working:true;}
 function matchFilters(e,dayIdx){
   var f=state.filters;
@@ -745,13 +751,14 @@ function renderSemana(){
         var dbl=e.shift!==turno;
         var nc=el('<div class="namecell" style="cursor:pointer"></div>');
         nc.appendChild(el('<div class="rail" style="background:'+AREAS[e.area].color+'"></div>'));
-        nc.appendChild(el('<div class="nm">'+esc(e.name)+(e.mgr?' <span class="star">★</span>':'')+(dbl?' <span class="shtag '+turno+'">doble</span>':'')+'</div>'));
+        nc.appendChild(el('<div class="nm">'+esc(e.name)+(e.mgr?' <span class="star">★</span>':'')+(dbl?' <span class="shtag chg">'+(doubleSomeDay(e)?'doble':'cambio')+'</span>':'')+'</div>'));
         nc.onclick=(function(id){return function(){openEmpSheet(id);};})(e.id);
         grid.appendChild(nc);
         for(var d=0;d<7;d++){
           var s=cellInTurno(e,d,turno);
-          var cell=el('<div class="cell '+s.st+'" data-emp="'+e.id+'" data-day="'+d+'"></div>');
-          cell.appendChild(el('<span class="tag">'+(s.st==='medio'?medioLabel(s,true):s.st==='off'?'':shortLabel(s.st))+'</span>'));
+          var cell=el('<div class="cell '+s.st+(s.moved?' moved':'')+'" data-emp="'+e.id+'" data-day="'+d+'"></div>');
+          var lbl=s.st==='medio'?medioLabel(s,true):s.st==='off'?(s.moved?'→'+(s.moved==='AM'?'Mañ':'Tar'):''):shortLabel(s.st);
+          cell.appendChild(el('<span class="tag">'+lbl+'</span>'));
           if(s.cover){var cv=employees.filter(function(x){return x.id===s.cover;})[0];if(cv)cell.appendChild(el('<span class="cov">↩ '+esc(cv.name.split(' ')[0])+'</span>'));}
           grid.appendChild(cell);
         }
