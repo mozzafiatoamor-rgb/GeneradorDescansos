@@ -137,6 +137,7 @@ h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em}
 .cell.closed{background:#ECEAE4;color:#8A857A}
 .cell.off{background:#FCFCFB;color:#CBC7BF}
 .cell.off.moved{background:#FBF3F6}.cell.off.moved .tag{color:#A85B7C;font-size:8.5px;font-weight:700;font-style:italic}
+.setrow.toggle{display:flex;align-items:center;justify-content:space-between;gap:12px}.setrow.toggle .tx b{font-size:13.5px}.setrow.toggle .tx small{display:block;color:#7c7468;font-size:11px;margin-top:2px}.swt{position:relative;display:inline-block;width:44px;height:26px;flex:none}.swt input{opacity:0;width:0;height:0;position:absolute}.swt span{position:absolute;inset:0;background:#D8D3C8;border-radius:99px;transition:.2s}.swt span:before{content:'';position:absolute;width:20px;height:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.25)}.swt input:checked+span{background:#7A1E3B}.swt input:checked+span:before{transform:translateX(18px)}
 .cell.closed .tag{color:#8A857A;font-weight:700}
 
 /* ===== Day view ===== */
@@ -435,14 +436,12 @@ h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em}
 
     <div class="setcard">
       <div class="sh">Reglas que cuida la app</div>
-      <div class="setrow">
-        <ul class="rulelist">
-          <li><b>Cuadrilla mínima por turno:</b> 1 barra, 1 mesero, 2 cocineros trabajando.</li>
-          <li><b>1 descanso por área y turno</b> el mismo día (los demás del área se quedan).</li>
-          <li><b>Encargado siempre presente por área:</b> si uno descansa, el otro puede entrar <b>cortado</b>.</li>
-          <li><b>Cortado</b> = 8:00–12:00 + 20:00–24:00.</li>
-        </ul>
-      </div>
+      <div class="setrow toggle"><div class="tx"><b>Cuadrilla incompleta</b><small>Avisa si falta gente: mín 1 barra, 1 mesero, 2 cocina.</small></div>
+        <label class="swt"><input type="checkbox" id="ruleCrew"><span></span></label></div>
+      <div class="setrow toggle"><div class="tx"><b>Máx 1 descanso por área/turno</b><small>Avisa si descansan 2+ del mismo área y turno el mismo día.</small></div>
+        <label class="swt"><input type="checkbox" id="ruleOneRest"><span></span></label></div>
+      <div class="setrow toggle"><div class="tx"><b>Encargados no descansan juntos</b><small>Avisa si todos los encargados de un área descansan el mismo día.</small></div>
+        <label class="swt"><input type="checkbox" id="ruleMgr"><span></span></label></div>
     </div>
 
     <div class="setcard">
@@ -509,7 +508,7 @@ var SEED=[
 ];
 
 /* ---------- data ---------- */
-var employees=[], base={}, weeks={}, closedDays={}, payroll={}, cfg={biz:'Mi negocio',defRest:1};
+var employees=[], base={}, weeks={}, closedDays={}, payroll={}, cfg={biz:'Mi negocio',defRest:1,rules:{crew:true,oneRest:false,mgr:false}};
 function uid(){return 'e'+Math.random().toString(36).slice(2,9);}
 function seedEmployees(){return SEED.map(function(s){return {id:uid(),name:s[0],shift:s[1],area:s[2],mgr:s[3]};});}
 function isObj(o){return o&&typeof o==='object'&&!Array.isArray(o);}
@@ -521,6 +520,7 @@ function loadData(){
   closedDays=store.get(K.closed,{}); if(!isObj(closedDays))closedDays={};
   payroll=store.get(K.pay,{}); if(!isObj(payroll))payroll={};
   cfg=store.get(K.cfg,null); if(!isObj(cfg))cfg={biz:'Mi negocio',defRest:1};
+  if(!isObj(cfg.rules))cfg.rules={crew:true,oneRest:false,mgr:false};
   if(!base){base=generateBase();store.set(K.base,base);}
 }
 function save(){store.set(K.emp,employees);store.set(K.base,base);store.set(K.weeks,weeks);store.set(K.closed,closedDays);store.set(K.pay,payroll);store.set(K.cfg,cfg);}
@@ -599,33 +599,37 @@ function generateBase(){
 /* ---------- validation ---------- */
 function validateDay(mon,dayIdx){
   if(isClosed(mon,dayIdx))return [];
+  var R=(cfg&&cfg.rules)||{crew:true,oneRest:false,mgr:false};
   var warns=[];
   AREA_ORDER.forEach(function(area){
-    ['AM','PM'].forEach(function(shift){
+    if(R.oneRest)['AM','PM'].forEach(function(shift){
       var inGroup=employees.filter(function(e){return e.area===area&&e.shift===shift;});
       if(!inGroup.length)return;
       var restCount=0;
       inGroup.forEach(function(e){if(getStatus(e.id,mon,dayIdx).st==='rest')restCount++;});
       if(restCount>1)warns.push('Más de un descanso en '+AREAS[area].short+' · '+SHIFTS[shift].label);
     });
-    // min crew per shift (cortado counts as present in both windows)
-    ['AM','PM'].forEach(function(shift){
+    // min crew per shift (cuenta trabajo, cortado y medio del turno correcto)
+    if(R.crew)['AM','PM'].forEach(function(shift){
       var areaEmps=employees.filter(function(e){return e.area===area;});
       var present=0;
       areaEmps.forEach(function(e){
-        var s=getStatus(e.id,mon,dayIdx).st;
-        if(s==='cortado')present++;
-        else if(s==='work'&&e.shift===shift)present++;
+        var o=getStatus(e.id,mon,dayIdx);
+        if(o.st==='cortado')present++;
+        else if(o.st==='work'&&(o.shift||e.shift)===shift)present++;
+        else if(o.st==='medio'&&((shift==='AM'&&o.am)||(shift==='PM'&&o.pm)))present++;
       });
       var hasShiftStaff=employees.some(function(e){return e.area===area&&(e.shift===shift);});
       if(hasShiftStaff&&present<MIN_CREW[area])
         warns.push('Falta cuadrilla en '+AREAS[area].short+' · '+SHIFTS[shift].label+' (mín '+MIN_CREW[area]+')');
     });
     // manager presence per area (solo aplica a áreas con 2+ encargados)
-    var mgrs=employees.filter(function(e){return e.area===area&&e.mgr;});
-    if(mgrs.length>=2){
-      var resting=mgrs.filter(function(e){return getStatus(e.id,mon,dayIdx).st==='rest';});
-      if(resting.length>=mgrs.length)warns.push('Los encargados de '+AREAS[area].short+' descansan el mismo día (uno puede entrar cortado)');
+    if(R.mgr){
+      var mgrs=employees.filter(function(e){return e.area===area&&e.mgr;});
+      if(mgrs.length>=2){
+        var resting=mgrs.filter(function(e){return getStatus(e.id,mon,dayIdx).st==='rest';});
+        if(resting.length>=mgrs.length)warns.push('Los encargados de '+AREAS[area].short+' descansan el mismo día');
+      }
     }
   });
   return warns;
@@ -889,6 +893,10 @@ function renderPlantilla(){
 function renderAjustes(){
   document.getElementById('bizInput').value=cfg.biz||'';
   document.getElementById('defRest').value=String(cfg.defRest||1);
+  var R=cfg.rules||{crew:true,oneRest:false,mgr:false};
+  var rc=document.getElementById('ruleCrew');if(rc)rc.checked=!!R.crew;
+  var ro=document.getElementById('ruleOneRest');if(ro)ro.checked=!!R.oneRest;
+  var rm=document.getElementById('ruleMgr');if(rm)rm.checked=!!R.mgr;
 }
 
 /* ---------- sheets ---------- */
@@ -1284,6 +1292,7 @@ document.getElementById('printBtn').addEventListener('click',function(){var html
 
 document.getElementById('bizInput').addEventListener('input',function(){cfg.biz=this.value;save();document.getElementById('bizName').textContent=cfg.biz||'Mi negocio';});
 document.getElementById('defRest').addEventListener('change',function(){cfg.defRest=parseInt(this.value,10);save();});
+['ruleCrew','ruleOneRest','ruleMgr'].forEach(function(id){var key={ruleCrew:'crew',ruleOneRest:'oneRest',ruleMgr:'mgr'}[id];var elx=document.getElementById(id);if(elx)elx.addEventListener('change',function(){if(!cfg.rules)cfg.rules={};cfg.rules[key]=this.checked;save();renderCalendar();toast(this.checked?'Regla activada':'Regla desactivada');});});
 document.getElementById('genBtn').addEventListener('click',function(){
   if(!confirm('Esto crea un nuevo patrón base de descansos respetando las reglas. ¿Continuar?'))return;
   base=generateBase();save();renderPlantilla();renderCalendar();toast('Patrón base generado');
