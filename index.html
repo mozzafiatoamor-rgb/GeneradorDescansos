@@ -1170,9 +1170,13 @@ function openPayrollSheet(empId){
 }
 
 
+function printHeader(title){
+  var logo;try{logo=new URL('logo.png',location.href).href;}catch(e){logo='logo.png';}
+  return '<div style="display:flex;align-items:center;gap:12px;margin-bottom:6px"><img src="'+logo+'" style="height:48px;width:auto;max-width:260px;object-fit:contain" onerror="this.style.display=\'none\'"><h2 style="margin:0">'+esc(title)+'</h2></div>';
+}
 function buildPrint(){
   var pa=document.getElementById('print-area');
-  var html='<h2>'+esc(cfg.biz||'Descansos')+' — Rol de descansos</h2>';
+  var html=printHeader('Rol de descansos');
   html+='<div class="psub">Semana '+fmtRange(state.week)+'</div>';
   ['AM','PM'].forEach(function(shift){
     var emps=groupedEmployees(shift);if(!emps.length)return;
@@ -1199,7 +1203,7 @@ function buildPrint(){
 
 function buildPayrollPrint(){
   var pa=document.getElementById('print-area');
-  var html='<h2>'+esc(cfg.biz||'Nómina')+' — Nómina semanal</h2>';
+  var html=printHeader('Nómina semanal');
   html+='<div class="psub">Semana '+fmtRange(state.week)+'</div>';
   html+='<table class="paytbl"><thead><tr><th class="nm">Empleado</th><th>Tipo</th><th>Base</th><th>Faltas</th><th>Retardos</th><th>Préstamo</th><th>Otros</th><th>Neto</th></tr></thead><tbody>';
   var grand=0;
