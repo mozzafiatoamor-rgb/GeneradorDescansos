@@ -134,6 +134,7 @@ h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em}
 .cell.medio{background:repeating-linear-gradient(90deg,#E9F0F6,#E9F0F6 6px,#D4E2EF 6px,#D4E2EF 12px);color:#2C5278}
 .cell.medio .tag{color:#2C5278;font-weight:700}
 .cell.closed{background:#ECEAE4;color:#8A857A}
+.cell.off{background:#FCFCFB;color:#CBC7BF}
 .cell.closed .tag{color:#8A857A;font-weight:700}
 
 /* ===== Day view ===== */
@@ -548,7 +549,7 @@ function setStatus(empId,mon,dayIdx,obj){
   // if equals base default and no cover, clear override to keep it clean
   var isBaseRest=base[empId]&&base[empId].indexOf(dayIdx)>-1;
   var defaultSt=isBaseRest?'rest':'work';
-  if(obj.st===defaultSt&&!obj.cover){delete weeks[key][empId][dayIdx];
+  if(obj.st===defaultSt&&!obj.cover&&!obj.shift){delete weeks[key][empId][dayIdx];
     if(!Object.keys(weeks[key][empId]).length)delete weeks[key][empId];
     if(!Object.keys(weeks[key]).length)delete weeks[key];
   }else{weeks[key][empId][dayIdx]=obj;}
@@ -670,15 +671,28 @@ function renderWarnbar(){
 }
 
 function medioLabel(o,short){if(o.am&&o.pm)return short?'½+½':'Medio 4h+4h';return o.am?(short?'½AM':'Medio mañana 4h'):(short?'½PM':'Medio noche 4h');}
-function cortadoThisWeek(empId){return worksShiftSomeDay(empId,'AM')&&worksShiftSomeDay(empId,'PM');}
-function worksShiftSomeDay(empId,turno){for(var d=0;d<7;d++){var o=getStatus(empId,state.week,d);if(o.st==='cortado')return true;if(o.st==='medio'&&((turno==='AM'&&o.am)||(turno==='PM'&&o.pm)))return true;}return false;}
-function inShiftThatDay(e,shift,day){if(e.shift===shift)return true;var o=getStatus(e.id,state.week,day);if(o.st==='cortado')return true;return o.st==='medio'&&((shift==='AM'&&o.am)||(shift==='PM'&&o.pm));}
+function worksTurnoSomeDay(e,turno){for(var d=0;d<7;d++){var o=getStatus(e.id,state.week,d);
+  if(o.st==='work'&&(o.shift||e.shift)===turno)return true;
+  if(o.st==='cortado')return true;
+  if(o.st==='medio'&&((turno==='AM'&&o.am)||(turno==='PM'&&o.pm)))return true;}return false;}
+function inShiftThatDay(e,shift,day){var o=getStatus(e.id,state.week,day);
+  if(o.st==='work')return (o.shift||e.shift)===shift;
+  if(o.st==='cortado')return true;
+  if(o.st==='medio')return (shift==='AM'&&o.am)||(shift==='PM'&&o.pm);
+  return e.shift===shift;}
+function cellInTurno(e,day,turno){var o=effStatus(e.id,state.week,day);
+  if(o.st==='closed')return {st:'closed'};
+  if(o.st==='rest')return e.shift===turno?{st:'rest',cover:o.cover}:{st:'off'};
+  if(o.st==='work')return (o.shift||e.shift)===turno?{st:'work'}:{st:'off'};
+  if(o.st==='medio')return ((turno==='AM'&&o.am)||(turno==='PM'&&o.pm))?{st:'medio',am:o.am,pm:o.pm}:{st:'off'};
+  if(o.st==='cortado')return {st:'cortado'};
+  return {st:'off'};}
 function statusMatchesEstado(st,estado){var working=(st==='work'||st==='cortado'||st==='medio');return estado==='trabajan'?working:estado==='descansan'?!working:true;}
 function matchFilters(e,dayIdx){
   var f=state.filters;
   if(f.emp!=='all')return e.id===f.emp;
   if(f.area!=='all'&&e.area!==f.area)return false;
-  if(f.turno!=='all'&&e.shift!==f.turno&&!worksShiftSomeDay(e.id,f.turno))return false;
+  if(f.turno!=='all'&&e.shift!==f.turno&&!worksTurnoSomeDay(e,f.turno))return false;
   if(f.estado!=='all'){
     if(dayIdx==null){var any=false;for(var d=0;d<7;d++){if(statusMatchesEstado(effStatus(e.id,state.week,d).st,f.estado)){any=true;break;}}if(!any)return false;}
     else if(!statusMatchesEstado(effStatus(e.id,state.week,dayIdx).st,f.estado))return false;
@@ -705,7 +719,7 @@ function buildFilterBar(){
   bar.appendChild(r4);
   return bar;
 }
-function inTurnoWeek(e,turno){return e.shift===turno||worksShiftSomeDay(e.id,turno);}
+function inTurnoWeek(e,turno){return e.shift===turno||worksTurnoSomeDay(e,turno);}
 function renderSemana(){
   var host=document.getElementById('semanaView');host.innerHTML='';
   host.appendChild(buildFilterBar());
@@ -735,9 +749,9 @@ function renderSemana(){
         nc.onclick=(function(id){return function(){openEmpSheet(id);};})(e.id);
         grid.appendChild(nc);
         for(var d=0;d<7;d++){
-          var s=effStatus(e.id,state.week,d);
+          var s=cellInTurno(e,d,turno);
           var cell=el('<div class="cell '+s.st+'" data-emp="'+e.id+'" data-day="'+d+'"></div>');
-          cell.appendChild(el('<span class="tag">'+(s.st==='medio'?medioLabel(s,true):shortLabel(s.st))+'</span>'));
+          cell.appendChild(el('<span class="tag">'+(s.st==='medio'?medioLabel(s,true):s.st==='off'?'':shortLabel(s.st))+'</span>'));
           if(s.cover){var cv=employees.filter(function(x){return x.id===s.cover;})[0];if(cv)cell.appendChild(el('<span class="cov">↩ '+esc(cv.name.split(' ')[0])+'</span>'));}
           grid.appendChild(cell);
         }
@@ -898,6 +912,10 @@ function openCellSheet(empId,dayIdx){
         '<button data-st="medio" class="'+(cur.st==='medio'?'on':'')+'"><span class="em">½</span>Medio 4h</button>'+
         '<button data-st="rest" class="'+(cur.st==='rest'?'on':'')+'"><span class="em">⏾</span>Descanso</button>'+
       '</div></div>'+
+      '<div class="fgroup" id="workShiftGroup" style="'+(cur.st==='work'?'':'display:none')+'"><label>Turno de este día</label><div class="daychips" id="workShift">'+
+        '<button data-sh="AM" class="'+((cur.shift||emp.shift)==='AM'?'on':'')+'">Mañana</button>'+
+        '<button data-sh="PM" class="'+((cur.shift||emp.shift)==='PM'?'on':'')+'">Tarde</button>'+
+      '</div></div>'+
       '<div class="fgroup" id="medioGroup" style="'+(cur.st==='medio'?'':'display:none')+'"><label>¿Qué medios turnos? (4h c/u)</label><div class="daychips" id="medioParts">'+
         '<button data-part="am" class="'+(cur.am?'on':'')+'">Mañana 4h</button>'+
         '<button data-part="pm" class="'+(cur.pm?'on':'')+'">Noche 4h</button>'+
@@ -908,10 +926,11 @@ function openCellSheet(empId,dayIdx){
       '<button class="linkbtn" id="cellReset">Volver al patrón base</button>'+
     '</div>'
   );
-  var chosen={st:cur.st,cover:cur.cover||null,am:!!cur.am,pm:!!cur.pm};
+  var chosen={st:cur.st,cover:cur.cover||null,am:!!cur.am,pm:!!cur.pm,shift:cur.shift||emp.shift};
   function syncGroups(){
     sc.querySelector('#coverGroup').style.display=chosen.st==='rest'?'block':'none';
     sc.querySelector('#medioGroup').style.display=chosen.st==='medio'?'block':'none';
+    sc.querySelector('#workShiftGroup').style.display=chosen.st==='work'?'block':'none';
   }
   sc.querySelectorAll('#segSt button').forEach(function(b){
     b.addEventListener('click',function(){
@@ -926,12 +945,16 @@ function openCellSheet(empId,dayIdx){
   sc.querySelectorAll('#medioParts button').forEach(function(b){
     b.addEventListener('click',function(){var p=b.getAttribute('data-part');chosen[p]=!chosen[p];b.classList.toggle('on',chosen[p]);});
   });
+  sc.querySelectorAll('#workShift button').forEach(function(b){
+    b.addEventListener('click',function(){chosen.shift=b.getAttribute('data-sh');sc.querySelectorAll('#workShift button').forEach(function(x){x.classList.remove('on');});b.classList.add('on');});
+  });
   sc.querySelector('#coverSel').addEventListener('change',function(){chosen.cover=this.value||null;});
   sc.querySelector('#saveCell').addEventListener('click',function(){
     if(chosen.st!=='rest')chosen.cover=null;
     if(chosen.st==='medio'&&!chosen.am&&!chosen.pm){if(emp.shift==='AM')chosen.am=true;else chosen.pm=true;}
     var obj={st:chosen.st,cover:chosen.cover};
     if(chosen.st==='medio'){obj.am=chosen.am;obj.pm=chosen.pm;}
+    if(chosen.st==='work'&&chosen.shift&&chosen.shift!==emp.shift)obj.shift=chosen.shift;
     setStatus(empId,state.week,dayIdx,obj);
     closeSheet();renderCalendar();toast('Guardado');
   });
@@ -1172,7 +1195,10 @@ function openPayrollSheet(empId){
 
 function printHeader(title){
   var logo;try{logo=new URL('logo.png',location.href).href;}catch(e){logo='logo.png';}
-  return '<div style="display:flex;align-items:center;gap:12px;margin-bottom:6px"><img src="'+logo+'" style="height:48px;width:auto;max-width:260px;object-fit:contain" onerror="this.style.display=\'none\'"><h2 style="margin:0">'+esc(title)+'</h2></div>';
+  return '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">'+
+    '<div style="background:linear-gradient(135deg,#16181D,#3a3f4a);padding:8px 14px;border-radius:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact;display:inline-flex;align-items:center;box-shadow:0 2px 6px rgba(0,0,0,.3)">'+
+    '<img src="'+logo+'" style="height:42px;width:auto;max-width:240px;object-fit:contain;display:block" onerror="this.parentNode.style.display=\'none\'"></div>'+
+    '<h2 style="margin:0">'+esc(title)+'</h2></div>';
 }
 function buildPrint(){
   var pa=document.getElementById('print-area');
