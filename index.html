@@ -360,7 +360,7 @@ h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em}
         <span class="glyph"><i></i><i></i><i></i></span>
         <div style="min-width:0">
           <h1>Descansos</h1>
-          <div class="biz" id="bizName">Mi negocio</div>
+          <div class="biz" id="bizName">Mozzafiato-El placer del buen café-</div>
         </div>
       </div>
     </div>
@@ -508,7 +508,7 @@ var SEED=[
 ];
 
 /* ---------- data ---------- */
-var employees=[], base={}, weeks={}, closedDays={}, payroll={}, cfg={biz:'Mi negocio',defRest:1,rules:{crew:true,oneRest:false,mgr:false}};
+var employees=[], base={}, weeks={}, closedDays={}, payroll={}, cfg={biz:'Mozzafiato-El placer del buen café-',defRest:1,rules:{crew:true,oneRest:false,mgr:false}};
 function uid(){return 'e'+Math.random().toString(36).slice(2,9);}
 function seedEmployees(){return SEED.map(function(s){return {id:uid(),name:s[0],shift:s[1],area:s[2],mgr:s[3]};});}
 function isObj(o){return o&&typeof o==='object'&&!Array.isArray(o);}
@@ -519,7 +519,8 @@ function loadData(){
   weeks=store.get(K.weeks,{}); if(!isObj(weeks))weeks={};
   closedDays=store.get(K.closed,{}); if(!isObj(closedDays))closedDays={};
   payroll=store.get(K.pay,{}); if(!isObj(payroll))payroll={};
-  cfg=store.get(K.cfg,null); if(!isObj(cfg))cfg={biz:'Mi negocio',defRest:1};
+  cfg=store.get(K.cfg,null); if(!isObj(cfg))cfg={biz:'Mozzafiato-El placer del buen café-',defRest:1};
+  if(!cfg.biz||cfg.biz==='Mi negocio')cfg.biz='Mozzafiato-El placer del buen café-';
   if(!isObj(cfg.rules))cfg.rules={crew:true,oneRest:false,mgr:false};
   if(!base){base=generateBase();store.set(K.base,base);}
 }
@@ -653,7 +654,7 @@ function groupedEmployees(shift){
 }
 
 function renderHeader(){
-  var bn=document.getElementById('bizName');if(bn)bn.textContent=(cfg&&cfg.biz)||'Mi negocio';
+  var bn=document.getElementById('bizName');if(bn)bn.textContent=(cfg&&cfg.biz)||'Mozzafiato-El placer del buen café-';
   var wr=document.getElementById('weekRange');if(wr)wr.textContent=fmtRange(state.week);
   var sameAsThis=iso(state.week)===iso(startOfWeek(new Date()));
   var ws=document.getElementById('weekSub');if(ws)ws.textContent=sameAsThis?'Semana actual':'Semana del '+state.week.getFullYear();
@@ -1362,7 +1363,7 @@ document.getElementById('nav-ajustes').addEventListener('click',function(){setTa
 document.getElementById('addEmpFab').addEventListener('click',function(){openEmpSheet(null);});
 document.getElementById('printBtn').addEventListener('click',function(){if(state.tab==='nomina'){openPayrollPrintSheet();}else{printDoc(buildPrint(),false);}});
 
-document.getElementById('bizInput').addEventListener('input',function(){cfg.biz=this.value;save();document.getElementById('bizName').textContent=cfg.biz||'Mi negocio';});
+document.getElementById('bizInput').addEventListener('input',function(){cfg.biz=this.value;save();document.getElementById('bizName').textContent=cfg.biz||'Mozzafiato-El placer del buen café-';});
 document.getElementById('defRest').addEventListener('change',function(){cfg.defRest=parseInt(this.value,10);save();});
 ['ruleCrew','ruleOneRest','ruleMgr'].forEach(function(id){var key={ruleCrew:'crew',ruleOneRest:'oneRest',ruleMgr:'mgr'}[id];var elx=document.getElementById(id);if(elx)elx.addEventListener('change',function(){if(!cfg.rules)cfg.rules={};cfg.rules[key]=this.checked;save();renderCalendar();toast(this.checked?'Regla activada':'Regla desactivada');});});
 document.getElementById('genBtn').addEventListener('click',function(){
