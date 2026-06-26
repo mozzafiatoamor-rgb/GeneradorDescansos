@@ -1208,12 +1208,10 @@ function openPayrollSheet(empId){
 }
 
 
+function logoBox(h){h=h||40;var l;try{l=new URL('logo.png',location.href).href;}catch(e){l='logo.png';}
+  return '<div style="background:linear-gradient(135deg,#16181D,#3a3f4a);padding:6px 12px;border-radius:10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;display:inline-flex;align-items:center"><img src="'+l+'" style="height:'+h+'px;width:auto;max-width:220px;object-fit:contain;display:block" onerror="this.parentNode.style.display=\'none\'"></div>';}
 function printHeader(title){
-  var logo;try{logo=new URL('logo.png',location.href).href;}catch(e){logo='logo.png';}
-  return '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">'+
-    '<div style="background:linear-gradient(135deg,#16181D,#3a3f4a);padding:8px 14px;border-radius:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact;display:inline-flex;align-items:center;box-shadow:0 2px 6px rgba(0,0,0,.3)">'+
-    '<img src="'+logo+'" style="height:42px;width:auto;max-width:240px;object-fit:contain;display:block" onerror="this.parentNode.style.display=\'none\'"></div>'+
-    '<h2 style="margin:0">'+esc(title)+'</h2></div>';
+  return '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">'+logoBox(42)+'<h2 style="margin:0">'+esc(title)+'</h2></div>';
 }
 function buildPrint(){
   var pa=document.getElementById('print-area');
@@ -1242,14 +1240,30 @@ function buildPrint(){
   pa.innerHTML=html;return html;
 }
 
-function buildPayrollPrint(){
+function payrollScopeLabel(f){
+  var parts=[];
+  if(f.emp){var e=byId(f.emp);if(e)return e.name;}
+  parts.push(f.area==='all'?'Todas las áreas':AREAS[f.area].short);
+  if(f.turno!=='all')parts.push(f.turno==='AM'?'Mañana':'Tarde');
+  return parts.join(' · ');
+}
+function payrollEmps(f){
+  return employees.filter(function(e){
+    if(f.emp)return e.id===f.emp;
+    if(f.area!=='all'&&e.area!==f.area)return false;
+    if(f.turno!=='all'&&e.shift!==f.turno&&!worksTurnoSomeDay(e,f.turno))return false;
+    return true;
+  });
+}
+function buildPayrollPrint(f){
+  f=f||{area:'all',turno:'all',emp:null};
   var pa=document.getElementById('print-area');
   var html=printHeader('Nómina semanal');
-  html+='<div class="psub">Semana '+fmtRange(state.week)+'</div>';
+  html+='<div class="psub">Semana '+fmtRange(state.week)+' · '+esc(payrollScopeLabel(f))+'</div>';
   html+='<table class="paytbl"><thead><tr><th class="nm">Empleado</th><th>Tipo</th><th>Base</th><th>Faltas</th><th>Retardos</th><th>Préstamo</th><th>Otros</th><th>Neto</th></tr></thead><tbody>';
-  var grand=0;
+  var grand=0,list=payrollEmps(f);
   AREA_ORDER.forEach(function(area){
-    var emps=employees.filter(function(e){return e.area===area;}).sort(function(a,b){return (a.shift>b.shift?1:-1)||(b.mgr?1:0)-(a.mgr?1:0);});
+    var emps=list.filter(function(e){return e.area===area;}).sort(function(a,b){return (a.shift>b.shift?1:-1)||(b.mgr?1:0)-(a.mgr?1:0);});
     if(!emps.length)return;
     html+='<tr class="grouprow"><td colspan="8">'+AREAS[area].short+'</td></tr>';
     var at=0;
@@ -1264,11 +1278,69 @@ function buildPayrollPrint(){
     html+='<tr class="subrow"><td class="nm" colspan="7">Subtotal '+AREAS[area].short+'</td><td><b>'+fmtMoney(at)+'</b></td></tr>';
   });
   html+='</tbody></table>';
-  html+='<div class="paytotal">Total nómina de la semana: <b>'+fmtMoney(grand)+'</b></div>';
+  html+='<div class="paytotal">Total: <b>'+fmtMoney(grand)+'</b></div>';
+  if(!list.length)html+='<div class="psub">Sin empleados en este filtro.</div>';
   pa.innerHTML=html;return html;
 }
-function printDoc(inner){
-  var css='@page{size:letter landscape;margin:11mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#000;margin:0;padding:8px}h2{font-size:18px;margin:0 0 2px}.psub{font-size:11px;color:#444;margin:0 0 10px}table{width:100%;border-collapse:collapse;table-layout:fixed;margin-bottom:8px}th,td{border:1px solid #999;padding:4px 3px;font-size:9.5px;text-align:center;vertical-align:middle;word-wrap:break-word}th.nm,td.nm{text-align:left;width:120px;font-weight:600}thead th{background:#222;color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}td.rest{background:#EF4E5B;color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-weight:700}td.cortado{background:#FBE4BB;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-weight:700}td.medio{background:#D4E2EF;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-weight:700}td.closed{background:#D9D6CF;color:#444;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-weight:700}tr.grouprow td{background:#EFEDE7;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-weight:700;text-align:left;font-size:10px}tr.subrow td{background:#EFEDE7;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-weight:700}.paytbl td.net{font-weight:700}.paytotal{margin-top:12px;font-size:14px;text-align:right}.pleg{margin-top:10px;font-size:10px;display:flex;gap:18px}.pwarn{margin-top:8px;font-size:10px;color:#9A331C}';
+function recRow(c,m,neg){return '<tr><td class="rc">'+c+'</td><td class="rm'+(neg?' neg':'')+'">'+m+'</td></tr>';}
+function buildRecibos(f){
+  f=f||{area:'all',turno:'all',emp:null};
+  var list=payrollEmps(f).sort(function(a,b){return a.area.localeCompare(b.area)||a.name.localeCompare(b.name);});
+  var biz=esc(cfg.biz||'');var out='';
+  list.forEach(function(e,i){
+    var b=basePay(e,state.week),d=deductions(e,state.week),n=netPay(e,state.week);
+    var t=payType(e),r=payRate(e),ent=payEntry(e.id,state.week)||{};
+    var tipoTxt=t==='diario'?'Diario':t==='semanal'?'Semanal':'Por hora';
+    var rows='';
+    if(t==='hora'){var horas=(ent.horas!=null)?ent.horas:workedHours(e.id,state.week);rows+=recRow('Horas trabajadas ('+horas+' h × '+fmtMoney(r)+')',fmtMoney(b));}
+    else{var dias=(ent.dias!=null)?ent.dias:workedDays(e.id,state.week);rows+=recRow('Días trabajados ('+dias+' × '+fmtMoney(t==='semanal'?r/6:r)+')',fmtMoney(b));}
+    if(d.falta)rows+=recRow('Faltas ('+(ent.faltas||0)+')','-'+fmtMoney(d.falta),1);
+    if(d.retardo){var rn=(ent.retardos||[]).reduce(function(a,x){return a+(x.n||0);},0);rows+=recRow('Retardos'+(rn?' ('+rn+')':''),'-'+fmtMoney(d.retardo),1);}
+    if(e.loan&&d.abono){var saldo=Math.max(0,loanSaldoBefore(e,state.week)-d.abono);rows+=recRow('Abono a préstamo (saldo restante '+fmtMoney(saldo)+')','-'+fmtMoney(d.abono),1);}
+    (ent.otros||[]).forEach(function(o){if(o.m)rows+=recRow('Otro: '+esc(o.c||'—'),'-'+fmtMoney(o.m),1);});
+    out+='<div class="recibo"'+(i<list.length-1?' style="page-break-after:always"':'')+'>'+
+      '<div class="rhead">'+logoBox(40)+'<div class="rtitle"><div class="rt1">RECIBO DE NÓMINA</div><div class="rt2">'+biz+'</div></div></div>'+
+      '<div class="rmeta"><div><b>Empleado:</b> '+esc(e.name)+(e.mgr?' ★':'')+'</div><div><b>Área:</b> '+AREAS[e.area].short+'</div><div><b>Turno:</b> '+(e.shift==='AM'?'Mañana':'Tarde')+'</div><div><b>Pago:</b> '+tipoTxt+' '+fmtMoney(r)+'</div><div style="grid-column:1/-1"><b>Semana:</b> '+fmtRange(state.week)+'</div></div>'+
+      '<table class="rtbl"><tbody>'+rows+'</tbody><tfoot><tr><td class="rc">NETO A PAGAR</td><td class="rm net">'+fmtMoney(n)+'</td></tr></tfoot></table>'+
+      '<div class="rconf">Recibí de '+biz+' la cantidad de <b>'+fmtMoney(n)+'</b> por concepto de pago de la semana indicada, quedando conforme.</div>'+
+      '<div class="rsign"><div class="sb"><div class="ln"></div>Firma del empleado</div><div class="sb"><div class="ln"></div>Fecha</div></div>'+
+      '</div>';
+  });
+  if(!list.length)out='<div class="psub">Sin empleados en este filtro.</div>';
+  document.getElementById('print-area').innerHTML=out;return out;
+}
+function openPayrollPrintSheet(){
+  var pf={format:'resumen',area:'all',turno:'all',emp:null};
+  var areaChips=[['all','Todas']].concat(AREA_ORDER.map(function(a){return [a,AREAS[a].short];}));
+  var turnoChips=[['all','Todos'],['AM','Mañana'],['PM','Tarde']];
+  var empOpts='<option value="">— Todos —</option>'+employees.slice().sort(function(a,b){return a.name.localeCompare(b.name);}).map(function(e){return '<option value="'+e.id+'">'+esc(e.name)+' ('+AREAS[e.area].short+')</option>';}).join('');
+  openSheet(
+    '<div class="shead"><div class="t">Imprimir nómina</div><div class="s">Semana '+fmtRange(state.week)+'</div></div>'+
+    '<div class="sbody">'+
+      '<div class="fgroup"><label>Formato</label><div class="segm" id="ppFmt">'+
+        '<button data-f="resumen" class="on">Resumen (tabla)</button>'+
+        '<button data-f="recibo">Recibos con firma</button></div></div>'+
+      '<div class="fgroup"><label>Área</label><div class="daychips" id="ppArea">'+
+        areaChips.map(function(c,i){return '<button data-v="'+c[0]+'" class="'+(i===0?'on':'')+'">'+c[1]+'</button>';}).join('')+'</div></div>'+
+      '<div class="fgroup"><label>Turno</label><div class="daychips" id="ppTurno">'+
+        turnoChips.map(function(c,i){return '<button data-v="'+c[0]+'" class="'+(i===0?'on':'')+'">'+c[1]+'</button>';}).join('')+'</div></div>'+
+      '<div class="fgroup"><label>Persona (opcional)</label><select class="field" id="ppEmp">'+empOpts+'</select><div class="hint">Si eliges a alguien, se ignoran área y turno.</div></div>'+
+      '<div class="sheetfoot"><button class="btn primary" id="ppGo">Generar PDF</button></div>'+
+    '</div>'
+  );
+  function chip(id,key){sc.querySelectorAll('#'+id+' button').forEach(function(b){b.addEventListener('click',function(){sc.querySelectorAll('#'+id+' button').forEach(function(x){x.classList.remove('on');});b.classList.add('on');pf[key]=b.getAttribute('data-v');});});}
+  sc.querySelectorAll('#ppFmt button').forEach(function(b){b.addEventListener('click',function(){sc.querySelectorAll('#ppFmt button').forEach(function(x){x.classList.remove('on');});b.classList.add('on');pf.format=b.getAttribute('data-f');});});
+  chip('ppArea','area');chip('ppTurno','turno');
+  sc.querySelector('#ppEmp').addEventListener('change',function(){pf.emp=this.value||null;});
+  sc.querySelector('#ppGo').addEventListener('click',function(){
+    closeSheet();
+    if(pf.format==='recibo')printDoc(buildRecibos(pf),true);
+    else printDoc(buildPayrollPrint(pf),false);
+  });
+}
+function printDoc(inner,portrait){
+  var css='@page{size:letter '+(portrait?'portrait':'landscape')+';margin:'+(portrait?'14mm':'11mm')+'}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#000;margin:0;padding:8px}h2{font-size:18px;margin:0 0 2px}.psub{font-size:11px;color:#444;margin:0 0 10px}table{width:100%;border-collapse:collapse;table-layout:fixed;margin-bottom:8px}th,td{border:1px solid #999;padding:4px 3px;font-size:9.5px;text-align:center;vertical-align:middle;word-wrap:break-word}th.nm,td.nm{text-align:left;width:120px;font-weight:600}thead th{background:#222;color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}td.rest{background:#EF4E5B;color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-weight:700}td.cortado{background:#FBE4BB;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-weight:700}td.medio{background:#D4E2EF;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-weight:700}td.closed{background:#D9D6CF;color:#444;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-weight:700}tr.grouprow td{background:#EFEDE7;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-weight:700;text-align:left;font-size:10px}tr.subrow td{background:#EFEDE7;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-weight:700}.paytbl td.net{font-weight:700}.paytotal{margin-top:12px;font-size:14px;text-align:right}.pleg{margin-top:10px;font-size:10px;display:flex;gap:18px}.pwarn{margin-top:8px;font-size:10px;color:#9A331C}'+
+  '.recibo{max-width:700px;margin:0 auto}.rhead{display:flex;align-items:center;gap:14px;border-bottom:2px solid #16181D;padding-bottom:10px;margin-bottom:14px}.rtitle .rt1{font-size:21px;font-weight:800;letter-spacing:.5px}.rtitle .rt2{font-size:13px;color:#555;margin-top:2px}.rmeta{display:grid;grid-template-columns:1fr 1fr;gap:5px 18px;font-size:12.5px;margin-bottom:16px}.rtbl{width:100%;border-collapse:collapse;margin-bottom:24px}.rtbl td{border:none;border-bottom:1px solid #e3e0d9;padding:9px 6px;font-size:12.5px;text-align:left}.rtbl td.rm{text-align:right;width:150px;font-variant-numeric:tabular-nums}.rtbl td.neg{color:#9A331C}.rtbl tfoot td{border-top:2px solid #16181D;border-bottom:none;font-size:17px;font-weight:800;padding-top:11px}.rtbl tfoot td.net{color:#1E7D74;text-align:right}.rconf{font-size:11.5px;color:#333;line-height:1.5;margin-bottom:42px}.rsign{display:flex;justify-content:space-between;gap:40px;font-size:12px}.rsign .sb{flex:1;text-align:center}.rsign .ln{border-top:1.5px solid #333;margin-bottom:5px}';
   var doc='<!DOCTYPE html><html><head><meta charset="utf-8"><style>'+css+'</style></head><body>'+inner+'</body></html>';
   var f=document.createElement('iframe');
   f.style.cssText='position:fixed;left:-9999px;top:0;width:1100px;height:800px;border:0';
@@ -1288,7 +1360,7 @@ document.getElementById('nav-plantilla').addEventListener('click',function(){set
 document.getElementById('nav-nomina').addEventListener('click',function(){setTab('nomina');});
 document.getElementById('nav-ajustes').addEventListener('click',function(){setTab('ajustes');});
 document.getElementById('addEmpFab').addEventListener('click',function(){openEmpSheet(null);});
-document.getElementById('printBtn').addEventListener('click',function(){var html=state.tab==='nomina'?buildPayrollPrint():buildPrint();printDoc(html);});
+document.getElementById('printBtn').addEventListener('click',function(){if(state.tab==='nomina'){openPayrollPrintSheet();}else{printDoc(buildPrint(),false);}});
 
 document.getElementById('bizInput').addEventListener('input',function(){cfg.biz=this.value;save();document.getElementById('bizName').textContent=cfg.biz||'Mi negocio';});
 document.getElementById('defRest').addEventListener('change',function(){cfg.defRest=parseInt(this.value,10);save();});
