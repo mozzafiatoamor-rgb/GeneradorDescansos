@@ -140,6 +140,7 @@ h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em}
 .taskbadge{display:inline-block;background:#F6E7C9;color:#8A5A12;border:1px solid #E6CF9E;font-size:8px;font-weight:800;padding:1px 4px;border-radius:99px;margin-top:2px;line-height:1.3;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .erow .taskbadge{font-size:10px;margin:0 6px 0 0;padding:2px 8px}
 .trow{display:flex;gap:8px}.scol{flex:1;text-align:center;background:#fff;border:1px solid #E7E1D5;border-radius:12px;padding:8px 4px}.scol .scl{font-size:11px;font-weight:700;color:#5a5346;margin-bottom:5px}.scol .scs{font-size:9.5px;color:#8a8275;margin-top:4px;line-height:1.2}.scol .scamt{font-size:11px;font-weight:700;color:#9A331C;margin-top:2px;min-height:14px}.stepper.sm{display:flex;align-items:center;justify-content:center;gap:8px}.stepper.sm .st{width:30px;height:30px}.stepper.sm span{min-width:18px;text-align:center;font-weight:800}.paidtoggle{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:12px 14px;background:#F1F7F2;border:1px solid #CFE6D4;border-radius:12px;font-weight:700;color:#1f6b46}.paidtag{display:inline-block;background:#1E7D74;color:#fff;font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle}.nomrow.paid{background:#F4FAF5}.paidcount{font-size:12.5px;color:#5a5346;margin-top:6px}.paidcount b{color:#1E7D74}
+.bakstatus{font-size:12px;font-weight:600;padding:9px 11px;border-radius:10px;margin-bottom:10px;line-height:1.35}.bakstatus.ok{background:#EEF7F0;color:#1f6b46;border:1px solid #CFE6D4}.bakstatus.warn{background:#FDF3E7;color:#8a5a12;border:1px solid #F0DDBB}.bakstatus.bad{background:#FCEDEA;color:#9A331C;border:1px solid #F0C9BE}
 .setrow.toggle{display:flex;align-items:center;justify-content:space-between;gap:12px}.setrow.toggle .tx b{font-size:13.5px}.setrow.toggle .tx small{display:block;color:#7c7468;font-size:11px;margin-top:2px}.swt{position:relative;display:inline-block;width:44px;height:26px;flex:none}.swt input{opacity:0;width:0;height:0;position:absolute}.swt span{position:absolute;inset:0;background:#D8D3C8;border-radius:99px;transition:.2s}.swt span:before{content:'';position:absolute;width:20px;height:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.25)}.swt input:checked+span{background:#7A1E3B}.swt input:checked+span:before{transform:translateX(18px)}
 .cell.closed .tag{color:#8A857A;font-weight:700}
 
@@ -449,11 +450,12 @@ h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em}
 
     <div class="setcard">
       <div class="sh">Respaldo de datos</div>
+      <div id="backupStatus"></div>
       <div class="setrow">
-        <div class="hint">Los datos viven en este dispositivo. Exporta un respaldo de vez en cuando.</div>
+        <div class="hint">Los datos viven <b>solo en este dispositivo/navegador</b>. Si borras datos del navegador, cambias de celular o desinstalas, se pierden. Exporta seguido y guarda el archivo en Google Drive o envíatelo por WhatsApp.</div>
         <div class="ctl btnrow">
-          <button class="btn ghost" id="exportBtn">Exportar</button>
-          <button class="btn ghost" id="importBtn">Importar</button>
+          <button class="btn ghost" id="exportBtn">Exportar respaldo</button>
+          <button class="btn ghost" id="importBtn">Restaurar</button>
         </div>
         <input type="file" id="importFile" accept="application/json" hidden>
       </div>
@@ -488,7 +490,7 @@ var store={
   get:function(k,d){try{var v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return mem[k]!=null?mem[k]:d;}},
   set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){mem[k]=v;}}
 };
-var K={emp:'desc.v1.employees',base:'desc.v1.base',weeks:'desc.v1.weeks',cfg:'desc.v1.cfg',closed:'desc.v1.closed',pay:'desc.v1.payroll'};
+var K={emp:'desc.v1.employees',base:'desc.v1.base',weeks:'desc.v1.weeks',cfg:'desc.v1.cfg',closed:'desc.v1.closed',pay:'desc.v1.payroll',autobak:'desc.v1.autobak',lastexp:'desc.v1.lastexport'};
 
 /* ---------- constants ---------- */
 var AREAS={piso:{label:'Piso (meseros)',short:'Piso',color:'#3B6FB6'},
@@ -515,20 +517,26 @@ var employees=[], base={}, weeks={}, closedDays={}, payroll={}, cfg={biz:'Mozzaf
 function uid(){return 'e'+Math.random().toString(36).slice(2,9);}
 function seedEmployees(){return SEED.map(function(s){return {id:uid(),name:s[0],shift:s[1],area:s[2],mgr:s[3]};});}
 function isObj(o){return o&&typeof o==='object'&&!Array.isArray(o);}
+function snapshotData(){return {employees:employees,base:base,weeks:weeks,closed:closedDays,payroll:payroll,cfg:cfg,v:1,ts:new Date().toISOString()};}
 function loadData(){
+  var ab=store.get(K.autobak,null); if(!isObj(ab))ab=null;
   employees=store.get(K.emp,null);
-  if(!Array.isArray(employees)||!employees.length){employees=seedEmployees();store.set(K.emp,employees);}
-  base=store.get(K.base,null); if(!isObj(base))base=null;
-  weeks=store.get(K.weeks,{}); if(!isObj(weeks))weeks={};
-  closedDays=store.get(K.closed,{}); if(!isObj(closedDays))closedDays={};
-  payroll=store.get(K.pay,{}); if(!isObj(payroll))payroll={};
-  cfg=store.get(K.cfg,null); if(!isObj(cfg))cfg={biz:'Mozzafiato-El placer del buen café-',defRest:1};
+  if(!Array.isArray(employees)||!employees.length){
+    if(ab&&Array.isArray(ab.employees)&&ab.employees.length){employees=ab.employees;}
+    else {employees=seedEmployees();}
+    store.set(K.emp,employees);
+  }
+  base=store.get(K.base,null); if(!isObj(base))base=(ab&&isObj(ab.base))?ab.base:null;
+  weeks=store.get(K.weeks,null); if(!isObj(weeks))weeks=(ab&&isObj(ab.weeks))?ab.weeks:{};
+  closedDays=store.get(K.closed,null); if(!isObj(closedDays))closedDays=(ab&&isObj(ab.closed))?ab.closed:{};
+  payroll=store.get(K.pay,null); if(!isObj(payroll))payroll=(ab&&isObj(ab.payroll))?ab.payroll:{};
+  cfg=store.get(K.cfg,null); if(!isObj(cfg))cfg=(ab&&isObj(ab.cfg))?ab.cfg:{biz:'Mozzafiato-El placer del buen café-',defRest:1};
   if(!cfg.biz||cfg.biz==='Mi negocio')cfg.biz='Mozzafiato-El placer del buen café-';
   if(!isObj(cfg.rules))cfg.rules={crew:true,oneRest:false,mgr:false,minRest:true};
   if(cfg.rules.minRest===undefined)cfg.rules.minRest=true;
   if(!base){base=generateBase();store.set(K.base,base);}
 }
-function save(){store.set(K.emp,employees);store.set(K.base,base);store.set(K.weeks,weeks);store.set(K.closed,closedDays);store.set(K.pay,payroll);store.set(K.cfg,cfg);}
+function save(){store.set(K.emp,employees);store.set(K.base,base);store.set(K.weeks,weeks);store.set(K.closed,closedDays);store.set(K.pay,payroll);store.set(K.cfg,cfg);store.set(K.autobak,snapshotData());}
 
 /* ---------- dates ---------- */
 function startOfWeek(d){var x=new Date(d.getFullYear(),d.getMonth(),d.getDate());var k=(x.getDay()+6)%7;x.setDate(x.getDate()-k);return x;}
@@ -924,6 +932,7 @@ function renderAjustes(){
   var ro=document.getElementById('ruleOneRest');if(ro)ro.checked=!!R.oneRest;
   var rm=document.getElementById('ruleMgr');if(rm)rm.checked=!!R.mgr;
   var rmr=document.getElementById('ruleMinRest');if(rmr)rmr.checked=!!R.minRest;
+  renderBackupStatus();
 }
 
 /* ---------- sheets ---------- */
@@ -1449,25 +1458,45 @@ document.getElementById('genBtn').addEventListener('click',function(){
   if(!confirm('Esto crea un nuevo patrón base de descansos respetando las reglas. ¿Continuar?'))return;
   base=generateBase();save();renderPlantilla();renderCalendar();toast('Patrón base generado');
 });
+function fmtDateTime(iso){try{var d=new Date(iso);return d.toLocaleString('es-MX',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}catch(e){return iso;}}
+function renderBackupStatus(){
+  var host=document.getElementById('backupStatus');if(!host)return;
+  var last=store.get(K.lastexp,null);
+  var days=last?Math.floor((Date.now()-new Date(last).getTime())/86400000):null;
+  var txt,cls;
+  if(!last){txt='⚠ Nunca has exportado un respaldo. Hazlo ahora para no perder tus datos.';cls='bad';}
+  else if(days>=7){txt='⚠ Última copia hace '+days+' días ('+fmtDateTime(last)+'). Conviene exportar de nuevo.';cls='warn';}
+  else{txt='✓ Última copia: '+fmtDateTime(last)+'.';cls='ok';}
+  host.innerHTML='<div class="bakstatus '+cls+'">'+txt+'</div>';
+}
 document.getElementById('exportBtn').addEventListener('click',function(){
-  var data={employees:employees,base:base,weeks:weeks,closed:closedDays,payroll:payroll,cfg:cfg,v:1};
+  var data=snapshotData();
   var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   var a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download='descansos-respaldo-'+iso(new Date())+'.json';a.click();
-  setTimeout(function(){URL.revokeObjectURL(a.href);},1000);toast('Respaldo exportado');
+  a.download='mozzafiato-respaldo-'+iso(new Date())+'.json';a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
+  store.set(K.lastexp,new Date().toISOString());renderBackupStatus();
+  toast('Respaldo exportado · guárdalo en Drive o WhatsApp');
 });
 document.getElementById('importBtn').addEventListener('click',function(){document.getElementById('importFile').click();});
 document.getElementById('importFile').addEventListener('change',function(ev){
   var f=ev.target.files[0];if(!f)return;var r=new FileReader();
-  r.onload=function(){try{var d=JSON.parse(r.result);
-    if(d.employees)employees=d.employees;if(d.base)base=d.base;if(d.weeks)weeks=d.weeks;if(d.closed)closedDays=d.closed;if(d.payroll)payroll=d.payroll;if(d.cfg)cfg=d.cfg;
-    save();renderCalendar();renderPlantilla();renderAjustes();if(state.tab==='nomina')renderNomina();toast('Datos importados');
-  }catch(e){toast('Archivo no válido');}};r.readAsText(f);
+  r.onload=function(){
+    var d;try{d=JSON.parse(r.result);}catch(e){toast('Archivo no válido');return;}
+    if(!isObj(d)||!Array.isArray(d.employees)){toast('Ese archivo no es un respaldo válido');return;}
+    var emps=d.employees.length,weeksN=isObj(d.weeks)?Object.keys(d.weeks).length:0,payN=isObj(d.payroll)?Object.keys(d.payroll).length:0;
+    var when=d.ts?(' del '+fmtDateTime(d.ts)):'';
+    if(!confirm('Restaurar respaldo'+when+':\n• '+emps+' empleados\n• '+weeksN+' semanas de rol\n• '+payN+' semanas de nómina\n\nEsto REEMPLAZA tus datos actuales de este dispositivo. ¿Continuar?'))return;
+    employees=d.employees;base=isObj(d.base)?d.base:generateBase();weeks=isObj(d.weeks)?d.weeks:{};closedDays=isObj(d.closed)?d.closed:{};payroll=isObj(d.payroll)?d.payroll:{};if(isObj(d.cfg))cfg=d.cfg;
+    if(!isObj(cfg.rules))cfg.rules={crew:true,oneRest:false,mgr:false,minRest:true};
+    save();renderCalendar();renderPlantilla();renderAjustes();if(state.tab==='nomina')renderNomina();toast('Datos restaurados');
+  };r.readAsText(f);
   ev.target.value='';
 });
 document.getElementById('resetBtn').addEventListener('click',function(){
   if(!confirm('Esto borra TODOS los datos y vuelve a la plantilla inicial. ¿Seguro?'))return;
-  try{localStorage.removeItem(K.emp);localStorage.removeItem(K.base);localStorage.removeItem(K.weeks);localStorage.removeItem(K.closed);localStorage.removeItem(K.pay);localStorage.removeItem(K.cfg);}catch(e){}
+  if(!confirm('¿De verdad? Esto no se puede deshacer. Te conviene EXPORTAR primero.'))return;
+  try{[K.emp,K.base,K.weeks,K.closed,K.pay,K.cfg,K.autobak].forEach(function(k){localStorage.removeItem(k);});}catch(e){}
   mem={};loadData();renderCalendar();renderPlantilla();renderAjustes();toast('Datos restablecidos');
 });
 
