@@ -139,7 +139,8 @@ h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em}
 .cell.off.moved{background:#FBF3F6}.cell.off.moved .tag{color:#A85B7C;font-size:8.5px;font-weight:700;font-style:italic}
 .taskbadge{display:inline-block;background:#F6E7C9;color:#8A5A12;border:1px solid #E6CF9E;font-size:8px;font-weight:800;padding:1px 4px;border-radius:99px;margin-top:2px;line-height:1.3;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .erow .taskbadge{font-size:10px;margin:0 6px 0 0;padding:2px 8px}
-.trow{display:flex;gap:8px}.scol{flex:1;text-align:center;background:#fff;border:1px solid #E7E1D5;border-radius:12px;padding:8px 4px}.scol .scl{font-size:11px;font-weight:700;color:#5a5346;margin-bottom:5px}.scol .scs{font-size:9.5px;color:#8a8275;margin-top:4px;line-height:1.2}.scol .scamt{font-size:11px;font-weight:700;color:#9A331C;margin-top:2px;min-height:14px}.stepper.sm{display:flex;align-items:center;justify-content:center;gap:8px}.stepper.sm .st{width:30px;height:30px}.stepper.sm span{min-width:18px;text-align:center;font-weight:800}.paidtoggle{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:12px 14px;background:#F1F7F2;border:1px solid #CFE6D4;border-radius:12px;font-weight:700;color:#1f6b46}.paidtag{display:inline-block;background:#1E7D74;color:#fff;font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle}.nomrow.paid{background:#F4FAF5}.paidcount{font-size:12.5px;color:#5a5346;margin-top:6px}.paidcount b{color:#1E7D74}
+.trow{display:flex;gap:8px}.scol{flex:1;text-align:center;background:#fff;border:1px solid #E7E1D5;border-radius:12px;padding:8px 4px}.scol .scl{font-size:11px;font-weight:700;color:#5a5346;margin-bottom:5px}.scol .scs{font-size:9.5px;color:#8a8275;margin-top:4px;line-height:1.2}.scol .scamt{font-size:11px;font-weight:700;color:#9A331C;margin-top:2px;min-height:14px}.stepper.sm{display:flex;align-items:center;justify-content:center;gap:8px}.stepper.sm .st{width:30px;height:30px}.stepper.sm span{min-width:18px;text-align:center;font-weight:800}
+.trow2{display:flex;gap:8px}.hcol{flex:1;background:#fff;border:1px solid #E7E1D5;border-radius:12px;padding:8px;text-align:center}.hcol .scl{font-size:11px;font-weight:700;color:#5a5346;margin-bottom:6px}.hcol .minnum{width:100%;text-align:center}.hcol .scamt{font-size:11px;font-weight:700;color:#9A331C;margin-top:4px;min-height:14px}.hcol .scamt.pos{color:#1E7D74}.paidtoggle{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:12px 14px;background:#F1F7F2;border:1px solid #CFE6D4;border-radius:12px;font-weight:700;color:#1f6b46}.paidtag{display:inline-block;background:#1E7D74;color:#fff;font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle}.nomrow.paid{background:#F4FAF5}.paidcount{font-size:12.5px;color:#5a5346;margin-top:6px}.paidcount b{color:#1E7D74}
 .bakstatus{font-size:12px;font-weight:600;padding:9px 11px;border-radius:10px;margin-bottom:10px;line-height:1.35}.bakstatus.ok{background:#EEF7F0;color:#1f6b46;border:1px solid #CFE6D4}.bakstatus.warn{background:#FDF3E7;color:#8a5a12;border:1px solid #F0DDBB}.bakstatus.bad{background:#FCEDEA;color:#9A331C;border:1px solid #F0C9BE}
 .btn.wide{display:block;width:100%;text-align:center;margin-bottom:8px}.btn[disabled]{opacity:.5;pointer-events:none}.divider{height:1px;background:var(--line,#E7E1D5);margin:6px 0 12px}
 .draghint{font-size:11px;color:var(--muted-2,#8a8275);background:#FBF6EC;border:1px dashed #E6D9BE;border-radius:9px;padding:6px 10px;margin-bottom:10px;line-height:1.35}.cell.rest{cursor:grab;touch-action:none;-webkit-user-select:none;user-select:none}.wgrid.x,.gridcard.dragging,.dragging .gridscroll{touch-action:none}.dragghost{position:fixed;transform:translate(-50%,-150%);z-index:9999;background:#EF4E5B;color:#fff;font-weight:800;font-size:13px;width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(0,0,0,.35);pointer-events:none;opacity:.96}.cell.dragsrc{outline:2px dashed #EF4E5B;outline-offset:-2px;opacity:.45}.cell.droptarget{outline:3px solid #1E7D74;outline-offset:-3px;background:#E7F3F0!important;color:#1E7D74}
@@ -550,7 +551,7 @@ function fmtRange(mon){var sun=addDays(mon,6);
   var b=sun.getDate()+' '+MONTHS[sun.getMonth()];
   return a+' – '+b;}
 var today=new Date();
-var state={week:startOfWeek(today),view:'semana',dayIdx:(today.getDay()+6)%7,tab:'cal',filters:{turno:'all',area:'all',emp:'all',estado:'all'},warnsOpen:false};
+var state={week:startOfWeek(today),view:'semana',dayIdx:(today.getDay()+6)%7,tab:'cal',filters:{turnos:[],areas:[],emp:'all',estado:'all'},warnsOpen:false};
 
 /* ---------- status resolution ---------- */
 function weekKey(mon){return iso(mon);}
@@ -732,8 +733,11 @@ function statusMatchesEstado(st,estado){var working=(st==='work'||st==='cortado'
 function matchFilters(e,dayIdx){
   var f=state.filters;
   if(f.emp!=='all')return e.id===f.emp;
-  if(f.area!=='all'&&e.area!==f.area)return false;
-  if(f.turno!=='all'&&e.shift!==f.turno&&!worksTurnoSomeDay(e,f.turno))return false;
+  if(f.areas&&f.areas.length&&f.areas.indexOf(e.area)<0)return false;
+  if(f.turnos&&f.turnos.length){
+    var okT=false;f.turnos.forEach(function(tn){if(e.shift===tn||worksTurnoSomeDay(e,tn))okT=true;});
+    if(!okT)return false;
+  }
   if(f.estado!=='all'){
     if(dayIdx==null){var any=false;for(var d=0;d<7;d++){if(statusMatchesEstado(effStatus(e.id,state.week,d).st,f.estado)){any=true;break;}}if(!any)return false;}
     else if(!statusMatchesEstado(effStatus(e.id,state.week,dayIdx).st,f.estado))return false;
@@ -744,11 +748,14 @@ function filteredEmployees(){return employees.filter(function(e){return matchFil
 function render(){renderCalendar();}
 function buildFilterBar(){
   var f=state.filters,bar=el('<div class="filterbar"></div>');
+  function toggle(arr,val){var i=arr.indexOf(val);if(i>=0)arr.splice(i,1);else arr.push(val);}
   var r1=el('<div class="fchips"><span class="fl">Turno</span></div>');
-  [['all','Todos'],['AM','AM'],['PM','PM']].forEach(function(o){var b=el('<button class="chip'+(f.turno===o[0]?' on':'')+'">'+o[1]+'</button>');b.onclick=function(){state.filters.turno=o[0];render();};r1.appendChild(b);});
+  var tAll=el('<button class="chip'+(f.turnos.length===0?' on':'')+'">Todos</button>');tAll.onclick=function(){state.filters.turnos=[];render();};r1.appendChild(tAll);
+  [['AM','AM'],['PM','PM']].forEach(function(o){var b=el('<button class="chip'+(f.turnos.indexOf(o[0])>=0?' on':'')+'">'+o[1]+'</button>');b.onclick=function(){toggle(state.filters.turnos,o[0]);render();};r1.appendChild(b);});
   bar.appendChild(r1);
   var r2=el('<div class="fchips"><span class="fl">Área</span></div>');
-  [['all','Todas'],['piso','Piso'],['barra','Barra'],['cocina','Cocina']].forEach(function(o){var b=el('<button class="chip'+(f.area===o[0]?' on':'')+'">'+o[1]+'</button>');b.onclick=function(){state.filters.area=o[0];render();};r2.appendChild(b);});
+  var aAll=el('<button class="chip'+(f.areas.length===0?' on':'')+'">Todas</button>');aAll.onclick=function(){state.filters.areas=[];render();};r2.appendChild(aAll);
+  [['piso','Piso'],['barra','Barra'],['cocina','Cocina']].forEach(function(o){var b=el('<button class="chip'+(f.areas.indexOf(o[0])>=0?' on':'')+'">'+o[1]+'</button>');b.onclick=function(){toggle(state.filters.areas,o[0]);render();};r2.appendChild(b);});
   bar.appendChild(r2);
   var r3=el('<div class="fchips"><span class="fl">Empleado</span></div>');
   var sel=el('<select class="fsel"></select>');sel.appendChild(el('<option value="all">Todos</option>'));
@@ -766,7 +773,7 @@ function renderSemana(){
   host.appendChild(buildFilterBar());
   host.appendChild(el('<div class="draghint">Arrastra la <b>D</b> roja a otro día para mover el descanso; el día que deja pasa a Trabaja.</div>'));
   var todayIso=iso(new Date()),list=filteredEmployees();
-  var shifts=state.filters.turno==='all'?['AM','PM']:[state.filters.turno];
+  var shifts=(state.filters.turnos&&state.filters.turnos.length)?['AM','PM'].filter(function(t){return state.filters.turnos.indexOf(t)>=0;}):['AM','PM'];
   var any=false;
   shifts.forEach(function(turno){
     var tlist=list.filter(function(e){return inTurnoWeek(e,turno);});
@@ -780,6 +787,7 @@ function renderSemana(){
       grid.appendChild(el('<div class="hcell'+(isToday?' today':'')+(cl?' closed':'')+'" data-dayhead="'+d+'">'+(cl?'⊘ ':'')+WD[d]+'<small>'+date.getDate()+'</small></div>'));
     }
     AREA_ORDER.forEach(function(area){
+      if(state.filters.areas.length&&state.filters.areas.indexOf(area)<0)return;
       var ge=tlist.filter(function(e){return inGroupWeek(e,turno,area);}).sort(function(a,b){return (b.mgr?1:0)-(a.mgr?1:0)||a.name.localeCompare(b.name);});
       if(!ge.length)return;
       grid.appendChild(el('<div class="grouprow">'+AREAS[area].short+'</div>'));
@@ -1154,16 +1162,19 @@ function loanSaldoBefore(emp,mon){if(!emp.loan)return 0;var sum=0,thisK=weekKey(
 function effAbono(emp,mon){if(!emp.loan)return 0;var sb=loanSaldoBefore(emp,mon),e=payEntry(emp.id,mon);
   var a=(e&&e.abono!=null)?e.abono:Math.min(emp.loan.abono||0,sb);return Math.max(0,Math.min(a,sb));}
 function retCount(e){if(!e)return 0;if(typeof e.retardos==='number')return e.retardos;if(e.retardos&&e.retardos.length)return e.retardos.length;return 0;}
+function valorHora(emp){return valorDia(emp)/8;}
 function deductions(emp,mon){var e=payEntry(emp.id,mon)||{};
-  var vd=valorDia(emp);
+  var vd=valorDia(emp),vh=vd/8;
   var f=(e.faltas||0)*vd;
   var fi=(e.faltasInj||0)*2*vd;
   var r=retCount(e)*50;
+  var mh=(e.menosHrs||0)*vh;
   var o=(e.otros||[]).reduce(function(a,x){return a+(x.m||0);},0);
   var ab=effAbono(emp,mon);
-  return {falta:f,faltaInj:fi,retardo:r,retN:retCount(e),otro:o,abono:ab,total:f+fi+r+o+ab};}
+  return {falta:f,faltaInj:fi,retardo:r,retN:retCount(e),menosHrs:mh,otro:o,abono:ab,total:f+fi+r+mh+o+ab};}
+function extraPay(emp,mon){var e=payEntry(emp.id,mon)||{};return (e.extraHrs||0)*(valorDia(emp)/8);}
 function isPaid(emp,mon){var e=payEntry(emp.id,mon);return !!(e&&e.paid);}
-function netPay(emp,mon){return Math.max(0,basePay(emp,mon)-deductions(emp,mon).total);}
+function netPay(emp,mon){return Math.max(0,basePay(emp,mon)+extraPay(emp,mon)-deductions(emp,mon).total);}
 function fmtMoney(n){var v=Math.round((n||0)*100)/100;return '$'+v.toLocaleString('es-MX',{minimumFractionDigits:0,maximumFractionDigits:2});}
 
 function renderNomina(){
@@ -1211,13 +1222,17 @@ function openPayrollSheet(empId){
   if(!entry.otros)entry.otros=[];
   if(typeof entry.retardos!=='number')entry.retardos=(entry.retardos&&entry.retardos.length)?entry.retardos.length:0;
   if(entry.faltasInj==null)entry.faltasInj=0;
+  if(entry.extraHrs==null)entry.extraHrs=0;
+  if(entry.menosHrs==null)entry.menosHrs=0;
   var t=payType(emp),r=payRate(emp);
   function vDia(){return valorDia(emp);}
   function bp(){if(t==='hora'){var h=entry.horas!=null?entry.horas:workedHours(emp.id,state.week);return h*r;}var di=entry.dias!=null?entry.dias:workedDays(emp.id,state.week);return di*(t==='semanal'?r/6:r);}
   function saldoB(){return loanSaldoBefore(emp,state.week);}
   function ab(){if(!emp.loan)return 0;var sb=saldoB();var a=entry.abono!=null?entry.abono:Math.min(emp.loan.abono||0,sb);return Math.max(0,Math.min(a,sb));}
-  function ded(){return {f:(entry.faltas||0)*vDia(),fi:(entry.faltasInj||0)*2*vDia(),r:(entry.retardos||0)*50,o:entry.otros.reduce(function(a,x){return a+(x.m||0);},0),a:ab()};}
-  function net(){var d=ded();return Math.max(0,bp()-d.f-d.fi-d.r-d.o-d.a);}
+  function vHora(){return vDia()/8;}
+  function extra(){return (entry.extraHrs||0)*vHora();}
+  function ded(){return {f:(entry.faltas||0)*vDia(),fi:(entry.faltasInj||0)*2*vDia(),r:(entry.retardos||0)*50,mh:(entry.menosHrs||0)*vHora(),o:entry.otros.reduce(function(a,x){return a+(x.m||0);},0),a:ab()};}
+  function net(){var d=ded();return Math.max(0,bp()+extra()-d.f-d.fi-d.r-d.mh-d.o-d.a);}
 
   function paint(){
     var d=ded();
@@ -1242,6 +1257,10 @@ function openPayrollSheet(empId){
           scol('Injustif.','fi',entry.faltasInj||0,'doble · −'+fmtMoney(vDia()*2)+' c/u',d.fi)+
           scol('Retardos','rt',entry.retardos||0,'−$50 c/u',d.r)+
         '</div></div>'+
+        '<div class="fgroup"><label>Horas (valor hora = '+fmtMoney(vDia()/8)+' = día ÷ 8)</label><div class="trow2">'+
+          '<div class="hcol"><div class="scl">Horas extra</div><input class="minnum" id="pExtraH" type="number" inputmode="decimal" min="0" step="0.5" value="'+(entry.extraHrs||0)+'"><div class="scamt pos" id="extraAmt">'+(extra()>0?'+'+fmtMoney(extra()):'')+'</div></div>'+
+          '<div class="hcol"><div class="scl">Horas no trabajadas</div><input class="minnum" id="pMenosH" type="number" inputmode="decimal" min="0" step="0.5" value="'+(entry.menosHrs||0)+'"><div class="scamt" id="menosAmt">'+(d.mh>0?'−'+fmtMoney(d.mh):'')+'</div></div>'+
+        '</div></div>'+
         '<div class="fgroup"><label>Préstamo</label>'+loanHtml+'</div>'+
         '<div class="fgroup"><label>Otros descuentos</label><div class="lilist">'+otHtml+'</div><div class="addrow"><input class="field sm" id="otConc" placeholder="concepto"><input class="field sm" id="otMonto" type="number" inputmode="decimal" placeholder="$ monto"><button class="mini add" id="otAdd">+</button></div></div>'+
         '<div class="netbox"><span>Neto a pagar</span><b id="netoVal">'+fmtMoney(net())+'</b></div>'+
@@ -1261,13 +1280,15 @@ function openPayrollSheet(empId){
     sc.querySelector('#otAdd').addEventListener('click',function(){var m=parseFloat(sc.querySelector('#otMonto').value)||0;if(m<=0){toast('Pon el monto');return;}entry.otros.push({m:m,c:sc.querySelector('#otConc').value.trim()});paint();});
     sc.querySelectorAll('.rm[data-ot]').forEach(function(b){b.addEventListener('click',function(){entry.otros.splice(parseInt(b.getAttribute('data-ot'),10),1);paint();});});
     var pp=sc.querySelector('#pPaid');if(pp)pp.addEventListener('change',function(){entry.paid=this.checked;});
+    var peh=sc.querySelector('#pExtraH');if(peh)peh.addEventListener('input',function(){entry.extraHrs=this.value===''?0:Math.max(0,parseFloat(this.value)||0);var a=sc.querySelector('#extraAmt');if(a)a.textContent=extra()>0?'+'+fmtMoney(extra()):'';refreshNet();});
+    var pmh=sc.querySelector('#pMenosH');if(pmh)pmh.addEventListener('input',function(){entry.menosHrs=this.value===''?0:Math.max(0,parseFloat(this.value)||0);var a=sc.querySelector('#menosAmt');if(a){var mh=(entry.menosHrs||0)*(vDia()/8);a.textContent=mh>0?'−'+fmtMoney(mh):'';}refreshNet();});
     var pa=sc.querySelector('#pAbono');if(pa)pa.addEventListener('input',function(){entry.abono=this.value===''?null:parseFloat(this.value)||0;refreshNet();var after=sc.querySelectorAll('.loanbox .lrow b')[1];if(after)after.textContent=fmtMoney(Math.max(0,saldoB()-ab()));});
     var al=sc.querySelector('#addLoan');if(al)al.addEventListener('click',setLoan);
     var el2=sc.querySelector('#editLoan');if(el2)el2.addEventListener('click',setLoan);
     var rl=sc.querySelector('#rmLoan');if(rl)rl.addEventListener('click',function(){if(confirm('¿Quitar el préstamo de '+emp.name+'?')){delete emp.loan;entry.abono=null;save();paint();}});
     sc.querySelector('#savePay').addEventListener('click',function(){
       var k=weekKey(state.week);if(!payroll[k])payroll[k]={};
-      entry.faltas=entry.faltas||0;entry.faltasInj=entry.faltasInj||0;entry.retardos=entry.retardos||0;
+      entry.faltas=entry.faltas||0;entry.faltasInj=entry.faltasInj||0;entry.retardos=entry.retardos||0;entry.extraHrs=entry.extraHrs||0;entry.menosHrs=entry.menosHrs||0;
       payroll[k][empId]=entry;
       save();closeSheet();renderNomina();toast(entry.paid?'Guardado · Pagado':'Nómina guardada');
     });
@@ -1299,15 +1320,24 @@ function cellPrint(s){
 }
 function buildPrint(){
   var pa=document.getElementById('print-area');
+  var fl=state.filters;
+  var shifts=(fl.turnos&&fl.turnos.length)?['AM','PM'].filter(function(t){return fl.turnos.indexOf(t)>=0;}):['AM','PM'];
+  var scopeParts=[];
+  if(fl.turnos&&fl.turnos.length)scopeParts.push(fl.turnos.map(function(t){return t==='AM'?'Mañana':'Tarde';}).join('+'));
+  if(fl.areas&&fl.areas.length)scopeParts.push(fl.areas.map(function(a){return AREAS[a].short;}).join('+'));
+  if(fl.emp&&fl.emp!=='all'){var ee=byId(fl.emp);if(ee)scopeParts=[ee.name];}
+  if(fl.estado&&fl.estado!=='all')scopeParts.push(fl.estado==='trabajan'?'Solo trabajan':'Solo descansan');
+  var base=filteredEmployees();
   var html=printHeader('Rol de descansos');
-  html+='<div class="psub">Semana '+fmtRange(state.week)+'</div>';
-  ['AM','PM'].forEach(function(turno){
-    var tlist=employees.filter(function(e){return inTurnoWeek(e,turno);});
+  html+='<div class="psub">Semana '+fmtRange(state.week)+(scopeParts.length?' · '+esc(scopeParts.join(' · ')):'')+'</div>';
+  shifts.forEach(function(turno){
+    var tlist=base.filter(function(e){return inTurnoWeek(e,turno);});
     if(!tlist.length)return;
     html+='<table><thead><tr><th class="nm">'+SHIFTS[turno].label+' — Empleado</th>';
     for(var d=0;d<7;d++){var date=addDays(state.week,d);var cl=isClosed(state.week,d);html+='<th'+(cl?' class="closed"':'')+'>'+WD[d]+'<br>'+date.getDate()+'</th>';}
     html+='</tr></thead><tbody>';
     AREA_ORDER.forEach(function(area){
+      if(fl.areas&&fl.areas.length&&fl.areas.indexOf(area)<0)return;
       var ge=tlist.filter(function(e){return inGroupWeek(e,turno,area);}).sort(function(a,b){return (b.mgr?1:0)-(a.mgr?1:0)||a.name.localeCompare(b.name);});
       if(!ge.length)return;
       html+='<tr class="grouprow"><td colspan="8">'+AREAS[area].short+'</td></tr>';
@@ -1385,6 +1415,9 @@ function buildRecibos(f){
     var rows='';
     if(t==='hora'){var horas=(ent.horas!=null)?ent.horas:workedHours(e.id,state.week);rows+=recRow('Horas trabajadas ('+horas+' h × '+fmtMoney(r)+')',fmtMoney(b));}
     else{var dias=(ent.dias!=null)?ent.dias:workedDays(e.id,state.week);rows+=recRow('Días trabajados ('+dias+' × '+fmtMoney(t==='semanal'?r/6:r)+')',fmtMoney(b));}
+    var vh=valorDia(e)/8;
+    if(ent.extraHrs)rows+=recRow('Horas extra ('+ent.extraHrs+' h × '+fmtMoney(vh)+')','+'+fmtMoney(ent.extraHrs*vh));
+    if(d.menosHrs)rows+=recRow('Horas no trabajadas ('+(ent.menosHrs||0)+' h × '+fmtMoney(vh)+')','-'+fmtMoney(d.menosHrs),1);
     if(d.falta)rows+=recRow('Faltas ('+(ent.faltas||0)+')','-'+fmtMoney(d.falta),1);
     if(d.faltaInj)rows+=recRow('Faltas injustificadas ('+(ent.faltasInj||0)+', doble)','-'+fmtMoney(d.faltaInj),1);
     if(d.retardo)rows+=recRow('Retardos ('+d.retN+' × $50)','-'+fmtMoney(d.retardo),1);
