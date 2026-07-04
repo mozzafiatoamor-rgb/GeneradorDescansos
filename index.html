@@ -141,6 +141,7 @@ h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em}
 .erow .taskbadge{font-size:10px;margin:0 6px 0 0;padding:2px 8px}
 .trow{display:flex;gap:8px}.scol{flex:1;text-align:center;background:#fff;border:1px solid #E7E1D5;border-radius:12px;padding:8px 4px}.scol .scl{font-size:11px;font-weight:700;color:#5a5346;margin-bottom:5px}.scol .scs{font-size:9.5px;color:#8a8275;margin-top:4px;line-height:1.2}.scol .scamt{font-size:11px;font-weight:700;color:#9A331C;margin-top:2px;min-height:14px}.stepper.sm{display:flex;align-items:center;justify-content:center;gap:8px}.stepper.sm .st{width:30px;height:30px}.stepper.sm span{min-width:18px;text-align:center;font-weight:800}.paidtoggle{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:12px 14px;background:#F1F7F2;border:1px solid #CFE6D4;border-radius:12px;font-weight:700;color:#1f6b46}.paidtag{display:inline-block;background:#1E7D74;color:#fff;font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle}.nomrow.paid{background:#F4FAF5}.paidcount{font-size:12.5px;color:#5a5346;margin-top:6px}.paidcount b{color:#1E7D74}
 .bakstatus{font-size:12px;font-weight:600;padding:9px 11px;border-radius:10px;margin-bottom:10px;line-height:1.35}.bakstatus.ok{background:#EEF7F0;color:#1f6b46;border:1px solid #CFE6D4}.bakstatus.warn{background:#FDF3E7;color:#8a5a12;border:1px solid #F0DDBB}.bakstatus.bad{background:#FCEDEA;color:#9A331C;border:1px solid #F0C9BE}
+.btn.wide{display:block;width:100%;text-align:center;margin-bottom:8px}.btn[disabled]{opacity:.5;pointer-events:none}.divider{height:1px;background:var(--line,#E7E1D5);margin:6px 0 12px}
 .setrow.toggle{display:flex;align-items:center;justify-content:space-between;gap:12px}.setrow.toggle .tx b{font-size:13.5px}.setrow.toggle .tx small{display:block;color:#7c7468;font-size:11px;margin-top:2px}.swt{position:relative;display:inline-block;width:44px;height:26px;flex:none}.swt input{opacity:0;width:0;height:0;position:absolute}.swt span{position:absolute;inset:0;background:#D8D3C8;border-radius:99px;transition:.2s}.swt span:before{content:'';position:absolute;width:20px;height:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.25)}.swt input:checked+span{background:#7A1E3B}.swt input:checked+span:before{transform:translateX(18px)}
 .cell.closed .tag{color:#8A857A;font-weight:700}
 
@@ -380,6 +381,7 @@ h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em}
       </div>
       <button class="nav" id="nextWeek">›</button>
       <button class="today-btn" id="todayBtn">Hoy</button>
+      <button class="today-btn" id="rolMenuBtn">Rol ⋯</button>
     </div>
     <div class="viewtoggle">
       <button id="vSemana" class="on">Semana</button>
@@ -1438,6 +1440,51 @@ function printDoc(inner,portrait){
   document.body.appendChild(f);
 }
 
+/* ---------- copiar/pegar rol ---------- */
+var rolClip=null;
+function deepClone(x){return JSON.parse(JSON.stringify(x));}
+function weekClosedIdx(mon){var out=[];for(var d=0;d<7;d++)if(isClosed(mon,d))out.push(d);return out;}
+function weekHasRol(mon){var w=weeks[weekKey(mon)];return (w&&Object.keys(w).length>0)||weekClosedIdx(mon).length>0;}
+function copyRol(mon){rolClip={weekData:deepClone(weeks[weekKey(mon)]||{}),closedIdx:weekClosedIdx(mon),src:fmtRange(mon)};}
+function pasteRolInto(mon){
+  var key=weekKey(mon);
+  if(rolClip.weekData&&Object.keys(rolClip.weekData).length)weeks[key]=deepClone(rolClip.weekData);else delete weeks[key];
+  for(var d=0;d<7;d++){var isod=iso(addDays(mon,d));if(closedDays[isod])delete closedDays[isod];}
+  rolClip.closedIdx.forEach(function(d){closedDays[iso(addDays(mon,d))]=true;});
+  save();
+}
+function repeatRolWeeks(mon,n){copyRol(mon);for(var i=1;i<=n;i++)pasteRolInto(addDays(mon,7*i));}
+function openRolSheet(){
+  var hasClip=!!rolClip,hasRol=weekHasRol(state.week);
+  openSheet(
+    '<div class="shead"><div class="t">Rol de la semana</div><div class="s">'+fmtRange(state.week)+'</div></div>'+
+    '<div class="sbody">'+
+      '<button class="btn ghost wide" id="rolCopy">📋 Copiar rol de esta semana</button>'+
+      '<button class="btn ghost wide" id="rolPaste"'+(hasClip?'':' disabled')+'>📥 Pegar rol aquí'+(hasClip?' (copiado: '+esc(rolClip.src)+')':'')+'</button>'+
+      '<div class="hint" style="margin:2px 0 10px">Pegar <b>reemplaza</b> todo el rol de esta semana (incluye cambios de turno/puesto, medios, tareas y días cerrados).</div>'+
+      '<div class="divider"></div>'+
+      '<button class="btn primary wide" id="rolNext">Llevar este rol a la semana siguiente →</button>'+
+      '<div class="fgroup" style="margin-top:12px"><label>O repetir esta semana en las próximas</label>'+
+        '<div class="stepper"><button class="st" id="nMinus">−</button><span id="nVal">4</span><button class="st" id="nPlus">+</button><span style="margin-left:8px;color:var(--muted)">semanas</span></div>'+
+        '<button class="btn ghost wide" id="rolRepeat" style="margin-top:8px">Repetir en las próximas <span id="nEcho">4</span> semanas</button></div>'+
+    '</div>'
+  );
+  var n=4;
+  function setN(v){n=Math.max(1,Math.min(52,v));sc.querySelector('#nVal').textContent=n;sc.querySelector('#nEcho').textContent=n;}
+  sc.querySelector('#nMinus').addEventListener('click',function(){setN(n-1);});
+  sc.querySelector('#nPlus').addEventListener('click',function(){setN(n+1);});
+  sc.querySelector('#rolCopy').addEventListener('click',function(){if(!hasRol&&!confirm('Esta semana no tiene ajustes de rol (todo en patrón base). ¿Copiar de todas formas?'))return;copyRol(state.week);closeSheet();toast('Rol copiado');});
+  var pb=sc.querySelector('#rolPaste');if(pb&&hasClip)pb.addEventListener('click',function(){if(!confirm('Reemplazar el rol de '+fmtRange(state.week)+' con el copiado de '+rolClip.src+'?'))return;pasteRolInto(state.week);closeSheet();renderCalendar();toast('Rol pegado');});
+  sc.querySelector('#rolNext').addEventListener('click',function(){
+    if(weekHasRol(addDays(state.week,7))&&!confirm('La semana siguiente ya tiene rol. ¿Reemplazarlo?'))return;
+    copyRol(state.week);pasteRolInto(addDays(state.week,7));state.week=addDays(state.week,7);closeSheet();renderCalendar();toast('Rol llevado a la semana siguiente');
+  });
+  sc.querySelector('#rolRepeat').addEventListener('click',function(){
+    if(!confirm('Copiar el rol de esta semana a las próximas '+n+' semanas? Se reemplazará el rol que tengan.'))return;
+    repeatRolWeeks(state.week,n);closeSheet();renderCalendar();toast('Rol repetido en '+n+' semanas');
+  });
+}
+document.getElementById('rolMenuBtn').addEventListener('click',openRolSheet);
 /* ---------- events ---------- */
 document.getElementById('prevWeek').addEventListener('click',function(){state.week=addDays(state.week,-7);renderCalendar();});
 document.getElementById('nextWeek').addEventListener('click',function(){state.week=addDays(state.week,7);renderCalendar();});
