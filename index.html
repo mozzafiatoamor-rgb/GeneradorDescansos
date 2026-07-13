@@ -453,6 +453,11 @@ h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em}
     </div>
 
     <div class="setcard">
+      <div class="sh">Trabajadores dados de baja</div>
+      <div id="bajasList"></div>
+    </div>
+
+    <div class="setcard">
       <div class="sh">Respaldo de datos</div>
       <div id="backupStatus"></div>
       <div class="setrow">
@@ -581,11 +586,15 @@ function effStatus(empId,mon,dayIdx){if(isClosed(mon,dayIdx))return {st:'closed'
 
 /* ---------- generator ---------- */
 function restDaysFor(emp){return emp.restDays||cfg.defRest||1;}
+function activeInWeek(e,mon){if(!e||!e.end)return true;return weekKey(mon)<e.end;}
+function roster(mon){return employees.filter(function(e){return activeInWeek(e,mon);});}
+function activeNow(e){return activeInWeek(e,startOfWeek(new Date()));}
+function inactiveList(){return employees.filter(function(e){return !activeNow(e);});}
 function generateBase(){
   var b={};
   var grp={}, mgrArea={}; // counters [day]
   for(var d=0;d<7;d++){grp[d]={};mgrArea[d]={};}
-  var ord=employees.slice().sort(function(a,c){return (c.mgr?1:0)-(a.mgr?1:0);});
+  var ord=employees.filter(activeNow).slice().sort(function(a,c){return (c.mgr?1:0)-(a.mgr?1:0);});
   ord.forEach(function(emp){
     var need=restDaysFor(emp), chosen=[], gk=emp.shift+'|'+emp.area;
     for(var n=0;n<need;n++){
@@ -620,7 +629,7 @@ function validateDay(mon,dayIdx){
   var warns=[];
   AREA_ORDER.forEach(function(area){
     if(R.oneRest)['AM','PM'].forEach(function(shift){
-      var inGroup=employees.filter(function(e){return e.area===area&&e.shift===shift;});
+      var inGroup=roster(mon).filter(function(e){return e.area===area&&e.shift===shift;});
       if(!inGroup.length)return;
       var restCount=0;
       inGroup.forEach(function(e){if(getStatus(e.id,mon,dayIdx).st==='rest')restCount++;});
@@ -629,14 +638,14 @@ function validateDay(mon,dayIdx){
     // min crew per shift (cuenta el puesto efectivo del día, incluye cambios de turno/puesto)
     if(R.crew)['AM','PM'].forEach(function(shift){
       var present=0;
-      employees.forEach(function(e){var du=effDuty(e,dayIdx,mon);if(du.area===area&&dutyInTurno(du,shift))present++;});
-      var hasShiftStaff=employees.some(function(e){return e.area===area&&(e.shift===shift);});
+      roster(mon).forEach(function(e){var du=effDuty(e,dayIdx,mon);if(du.area===area&&dutyInTurno(du,shift))present++;});
+      var hasShiftStaff=roster(mon).some(function(e){return e.area===area&&(e.shift===shift);});
       if(hasShiftStaff&&present<MIN_CREW[area])
         warns.push('Falta cuadrilla en '+AREAS[area].short+' · '+SHIFTS[shift].label+' (mín '+MIN_CREW[area]+')');
     });
     // manager presence per area (solo aplica a áreas con 2+ encargados)
     if(R.mgr){
-      var mgrs=employees.filter(function(e){return e.area===area&&e.mgr;});
+      var mgrs=roster(mon).filter(function(e){return e.area===area&&e.mgr;});
       if(mgrs.length>=2){
         var resting=mgrs.filter(function(e){return getStatus(e.id,mon,dayIdx).st==='rest';});
         if(resting.length>=mgrs.length)warns.push('Los encargados de '+AREAS[area].short+' descansan el mismo día');
@@ -648,7 +657,7 @@ function validateDay(mon,dayIdx){
 function restCountWeek(e,mon){var n=0;for(var d=0;d<7;d++){var st=effStatus(e.id,mon,d).st;if(st==='rest'||st==='closed')n++;}return n;}
 function validateWeek(mon){var out=[],R=(cfg&&cfg.rules)||{};
   if(R.minRest){
-    var short=employees.filter(function(e){return restCountWeek(e,mon)<restDaysFor(e);});
+    var short=roster(mon).filter(function(e){return restCountWeek(e,mon)<restDaysFor(e);});
     if(short.length)out.push('Falta asignar descanso a: '+short.map(function(e){return e.name;}).join(', '));
   }
   return out;}
@@ -663,7 +672,7 @@ function shortLabel(st){return st==='rest'?'D':st==='cortado'?'C':st==='medio'?'
 function groupedEmployees(shift){
   var out=[];
   AREA_ORDER.forEach(function(area){
-    var list=employees.filter(function(e){return e.shift===shift&&e.area===area;})
+    var list=roster(state.week).filter(function(e){return e.shift===shift&&e.area===area;})
       .sort(function(a,b){return (b.mgr?1:0)-(a.mgr?1:0)||a.name.localeCompare(b.name);});
     list.forEach(function(e){out.push(e);});
   });
@@ -744,7 +753,7 @@ function matchFilters(e,dayIdx){
   }
   return true;
 }
-function filteredEmployees(){return employees.filter(function(e){return matchFilters(e,null);});}
+function filteredEmployees(){return roster(state.week).filter(function(e){return matchFilters(e,null);});}
 function render(){renderCalendar();}
 function buildFilterBar(){
   var f=state.filters,bar=el('<div class="filterbar"></div>');
@@ -759,7 +768,7 @@ function buildFilterBar(){
   bar.appendChild(r2);
   var r3=el('<div class="fchips"><span class="fl">Empleado</span></div>');
   var sel=el('<select class="fsel"></select>');sel.appendChild(el('<option value="all">Todos</option>'));
-  employees.slice().sort(function(a,b){return a.name.localeCompare(b.name);}).forEach(function(e){var op=el('<option value="'+e.id+'">'+esc(e.name)+'</option>');if(f.emp===e.id)op.selected=true;sel.appendChild(op);});
+  roster(state.week).slice().sort(function(a,b){return a.name.localeCompare(b.name);}).forEach(function(e){var op=el('<option value="'+e.id+'">'+esc(e.name)+'</option>');if(f.emp===e.id)op.selected=true;sel.appendChild(op);});
   sel.onchange=function(){state.filters.emp=this.value;render();};
   r3.appendChild(sel);bar.appendChild(r3);
   var r4=el('<div class="fchips"><span class="fl">Estado</span></div>');
@@ -859,18 +868,18 @@ function renderDia(){
   }
 
   ['AM','PM'].forEach(function(shift){
-    var anyShift=employees.some(function(e){return e.shift===shift;});
+    var anyShift=roster(state.week).some(function(e){return e.shift===shift;});
     if(!anyShift)return;
     host.appendChild(el('<div class="shifthead" style="padding-top:6px"><span class="pill '+shift+'">'+shift+'</span><span class="ttl">'+SHIFTS[shift].label+'</span><span class="tt">'+SHIFTS[shift].time+'</span></div>'));
     AREA_ORDER.forEach(function(area){
-      var emps=employees.filter(function(e){
+      var emps=roster(state.week).filter(function(e){
         if(!matchFilters(e,state.dayIdx))return false;
         var du=effDuty(e,state.dayIdx);
         if(du.st==='rest'||du.st==='closed')return e.shift===shift&&e.area===area;
         return du.area===area&&dutyInTurno(du,shift);
       }).sort(function(a,b){return (b.mgr?1:0)-(a.mgr?1:0)||a.name.localeCompare(b.name);});
       if(!emps.length)return;
-      var present=0;employees.forEach(function(e){var du=effDuty(e,state.dayIdx);if(du.area===area&&dutyInTurno(du,shift))present++;});
+      var present=0;roster(state.week).forEach(function(e){var du=effDuty(e,state.dayIdx);if(du.area===area&&dutyInTurno(du,shift))present++;});
       var bad=!dayClosed&&present<MIN_CREW[area];
       var card=el('<div class="areacard"></div>');
       var crewTxt=dayClosed?'Cerrado':(present+' trabajando · mín '+MIN_CREW[area]);
@@ -918,7 +927,12 @@ function renderCalendar(){
 function renderPlantilla(){
   var host=document.getElementById('plantillaList');host.innerHTML='';
   ['AM','PM'].forEach(function(shift){
-    var emps=groupedEmployees(shift);
+    var emps=[];
+    AREA_ORDER.forEach(function(area){
+      employees.filter(function(e){return activeNow(e)&&e.shift===shift&&e.area===area;})
+        .sort(function(a,b){return (b.mgr?1:0)-(a.mgr?1:0)||a.name.localeCompare(b.name);})
+        .forEach(function(e){emps.push(e);});
+    });
     if(!emps.length)return;
     host.appendChild(el('<div class="ph">'+SHIFTS[shift].label+' · '+SHIFTS[shift].time+'</div>'));
     emps.forEach(function(e){
@@ -926,7 +940,8 @@ function renderPlantilla(){
       var card=el('<div class="pcard" data-emp="'+e.id+'"></div>');
       card.appendChild(el('<div class="rail" style="background:'+AREAS[e.area].color+'"></div>'));
       var pl=e.pay&&e.pay.rate?({diario:'$'+e.pay.rate+'/día',semanal:'$'+e.pay.rate+'/sem',hora:'$'+e.pay.rate+'/h'}[e.pay.type||'diario']):'sin sueldo';
-      card.appendChild(el('<div class="info"><div class="nm">'+esc(e.name)+(e.mgr?' <span class="star">★ Encargado</span>':'')+'</div><div class="meta">'+AREAS[e.area].short+' · '+pl+' · Descanso: '+bdays+'</div></div>'));
+      var bajaTag=e.end?' <span class="shtag chg">baja '+esc(e.endLabel||'')+'</span>':'';
+      card.appendChild(el('<div class="info"><div class="nm">'+esc(e.name)+(e.mgr?' <span class="star">★ Encargado</span>':'')+bajaTag+'</div><div class="meta">'+AREAS[e.area].short+' · '+pl+' · Descanso: '+bdays+'</div></div>'));
       var b=el('<button class="edit">✎</button>');
       card.appendChild(b);
       host.appendChild(card);
@@ -945,6 +960,7 @@ function renderAjustes(){
   var rm=document.getElementById('ruleMgr');if(rm)rm.checked=!!R.mgr;
   var rmr=document.getElementById('ruleMinRest');if(rmr)rmr.checked=!!R.minRest;
   renderBackupStatus();
+  renderBajas();
 }
 
 /* ---------- sheets ---------- */
@@ -958,7 +974,7 @@ function openCellSheet(empId,dayIdx){
   if(isClosed(state.week,dayIdx)){toast('Día cerrado · reábrelo para editar');return;}
   var date=addDays(state.week,dayIdx);
   var cur=getStatus(empId,state.week,dayIdx);
-  var coverEmps=employees.filter(function(e){return e.id!==empId;})
+  var coverEmps=roster(state.week).filter(function(e){return e.id!==empId;})
     .sort(function(a,b){
       // suggest same-area other-shift first, managers first
       var as=(a.area===emp.area?0:1)+(a.mgr?0:.1), bs=(b.area===emp.area?0:1)+(b.mgr?0:.1);
@@ -1081,7 +1097,8 @@ function openEmpSheet(empId){
       '</div></div>'+
       '<div class="fgroup"><label id="rateLbl">Tarifa ($)</label><input class="field" id="eRate" type="number" inputmode="decimal" min="0" value="'+((emp.pay&&emp.pay.rate)||'')+'" placeholder="0"></div>'+
       '<div class="sheetfoot"><button class="btn primary" id="saveEmp">Guardar</button></div>'+
-      (isNew?'':'<button class="linkbtn" id="delEmp" style="color:var(--warn)">Eliminar empleado</button>')+
+      (isNew?'':'<button class="linkbtn" id="bajaEmp">Dar de baja (conserva su historial)</button>')+
+      (isNew?'':'<button class="linkbtn" id="delEmp" style="color:var(--warn)">Eliminar y borrar su historial</button>')+
     '</div>'
   );
   var pick={shift:emp.shift,area:emp.area,mgr:emp.mgr,days:bdays.slice(),payType:(emp.pay&&emp.pay.type)||'diario'};
@@ -1107,15 +1124,57 @@ function openEmpSheet(empId){
     base[emp.id]=pick.days.sort(function(a,b){return a-b;});
     save();closeSheet();renderPlantilla();renderCalendar();toast(isNew?'Empleado agregado':'Guardado');
   });
+  var bj=sc.querySelector('#bajaEmp');
+  if(bj)bj.addEventListener('click',function(){openBajaSheet(emp.id);});
   var del=sc.querySelector('#delEmp');
   if(del)del.addEventListener('click',function(){
-    if(!confirm('¿Eliminar a '+emp.name+'?'))return;
+    if(!confirm('ELIMINAR a '+emp.name+' borra también su historial (rol y nóminas pasadas). Si solo ya no va a trabajar, usa "Dar de baja".\n\n¿Eliminar de todos modos?'))return;
     employees=employees.filter(function(e){return e.id!==emp.id;});
     delete base[emp.id];
     Object.keys(weeks).forEach(function(k){if(weeks[k][emp.id])delete weeks[k][emp.id];});
     Object.keys(payroll).forEach(function(k){if(payroll[k][emp.id])delete payroll[k][emp.id];});
     save();closeSheet();renderPlantilla();renderCalendar();toast('Eliminado');
   });
+}
+
+function openBajaSheet(empId){
+  var emp=byId(empId);if(!emp)return;
+  var wks=[];for(var i=0;i<8;i++){var m=addDays(startOfWeek(new Date()),7*i);wks.push({k:weekKey(m),label:(i===0?'Esta semana':i===1?'La próxima semana':'En '+i+' semanas')+' · '+fmtRange(m)});}
+  var cur=emp.end||wks[1].k;
+  openSheet(
+    '<div class="shead"><div class="t">Dar de baja</div><div class="s">'+esc(emp.name)+'</div></div>'+
+    '<div class="sbody">'+
+      '<div class="hint" style="margin-bottom:10px">A partir de la semana que elijas deja de aparecer en calendario y nómina. <b>Su historial anterior se conserva</b> (rol y recibos ya pagados).</div>'+
+      '<div class="fgroup"><label>Deja de trabajar a partir de</label><select class="field" id="bajaWeek">'+
+        wks.map(function(w){return '<option value="'+w.k+'"'+(w.k===cur?' selected':'')+'>'+esc(w.label)+'</option>';}).join('')+
+      '</select></div>'+
+      '<div class="sheetfoot"><button class="btn primary" id="bajaGo">Confirmar baja</button></div>'+
+      (emp.end?'<button class="linkbtn" id="bajaUndo">Cancelar la baja (reactivar)</button>':'')+
+    '</div>'
+  );
+  sc.querySelector('#bajaGo').addEventListener('click',function(){
+    emp.end=sc.querySelector('#bajaWeek').value;
+    employees=employees.map(function(e){return e.id===emp.id?emp:e;});
+    save();closeSheet();renderPlantilla();renderCalendar();if(state.tab==='nomina')renderNomina();
+    toast('Baja registrada · historial conservado');
+  });
+  var u=sc.querySelector('#bajaUndo');
+  if(u)u.addEventListener('click',function(){delete emp.end;employees=employees.map(function(e){return e.id===emp.id?emp:e;});save();closeSheet();renderPlantilla();renderCalendar();toast('Reactivado');});
+}
+function renderBajas(){
+  var host=document.getElementById('bajasList');if(!host)return;
+  var list=inactiveList();
+  if(!list.length){host.innerHTML='<div class="hint">Nadie dado de baja.</div>';return;}
+  host.innerHTML='';
+  list.forEach(function(e){
+    var row=el('<div class="setrow toggle"><div class="tx"><b>'+esc(e.name)+'</b><small>'+AREAS[e.area].short+' · baja desde la semana '+esc(e.end)+' · historial conservado</small></div><button class="mini" data-re="'+e.id+'">Reactivar</button></div>');
+    host.appendChild(row);
+  });
+  host.querySelectorAll('[data-re]').forEach(function(b){b.addEventListener('click',function(){
+    var em=byId(b.getAttribute('data-re'));if(!em)return;
+    delete em.end;employees=employees.map(function(x){return x.id===em.id?em:x;});
+    save();renderBajas();renderPlantilla();renderCalendar();toast('Reactivado');
+  });});
 }
 
 /* ---------- toast ---------- */
@@ -1188,7 +1247,7 @@ function renderNomina(){
 
   // totals
   var grand=0,areaT={piso:0,barra:0,cocina:0},paidN=0,totN=0;
-  employees.forEach(function(e){var n=netPay(e,state.week);grand+=n;areaT[e.area]=(areaT[e.area]||0)+n;if(payRate(e)>0){totN++;if(isPaid(e,state.week))paidN++;}});
+  roster(state.week).forEach(function(e){var n=netPay(e,state.week);grand+=n;areaT[e.area]=(areaT[e.area]||0)+n;if(payRate(e)>0){totN++;if(isPaid(e,state.week))paidN++;}});
   var sum=el('<div class="nomsum"></div>');
   sum.appendChild(el('<div class="nomtotal"><span class="lb">Gasto de nómina · semana</span><span class="vl">'+fmtMoney(grand)+'</span></div>'));
   sum.appendChild(el('<div class="paidcount">Pagados: <b>'+paidN+'</b> de '+totN+'</div>'));
@@ -1369,7 +1428,7 @@ function payrollScopeLabel(f){
   return parts.join(' · ');
 }
 function payrollEmps(f){
-  return employees.filter(function(e){
+  return roster(state.week).filter(function(e){
     if(f.emp)return e.id===f.emp;
     if(f.area!=='all'&&e.area!==f.area)return false;
     if(f.turno!=='all'&&e.shift!==f.turno&&!worksTurnoSomeDay(e,f.turno))return false;
@@ -1439,7 +1498,7 @@ function openPayrollPrintSheet(){
   var pf={format:'resumen',area:'all',turno:'all',emp:null};
   var areaChips=[['all','Todas']].concat(AREA_ORDER.map(function(a){return [a,AREAS[a].short];}));
   var turnoChips=[['all','Todos'],['AM','Mañana'],['PM','Tarde']];
-  var empOpts='<option value="">— Todos —</option>'+employees.slice().sort(function(a,b){return a.name.localeCompare(b.name);}).map(function(e){return '<option value="'+e.id+'">'+esc(e.name)+' ('+AREAS[e.area].short+')</option>';}).join('');
+  var empOpts='<option value="">— Todos —</option>'+roster(state.week).slice().sort(function(a,b){return a.name.localeCompare(b.name);}).map(function(e){return '<option value="'+e.id+'">'+esc(e.name)+' ('+AREAS[e.area].short+')</option>';}).join('');
   openSheet(
     '<div class="shead"><div class="t">Imprimir nómina</div><div class="s">Semana '+fmtRange(state.week)+'</div></div>'+
     '<div class="sbody">'+
