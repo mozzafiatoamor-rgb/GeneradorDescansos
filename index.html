@@ -587,9 +587,12 @@ function effStatus(empId,mon,dayIdx){if(isClosed(mon,dayIdx))return {st:'closed'
 
 /* ---------- generator ---------- */
 function restDaysFor(emp){return emp.restDays||cfg.defRest||1;}
-function activeInWeek(e,mon){if(!e||!e.end)return true;return weekKey(mon)<e.end;}
+function activeInWeek(e,mon){if(!e)return false;var k=weekKey(mon);
+  if(e.start&&k<e.start)return false;
+  if(e.end&&k>=e.end)return false;
+  return true;}
 function roster(mon){return employees.filter(function(e){return activeInWeek(e,mon);});}
-function activeNow(e){return activeInWeek(e,startOfWeek(new Date()));}
+function activeNow(e){if(!e)return false;if(!e.end)return true;return weekKey(startOfWeek(new Date()))<e.end;}
 function inactiveList(){return employees.filter(function(e){return !activeNow(e);});}
 function generateBase(){
   var b={};
@@ -948,7 +951,8 @@ function renderPlantilla(){
       var card=el('<div class="pcard" data-emp="'+e.id+'"></div>');
       card.appendChild(el('<div class="rail" style="background:'+AREAS[e.area].color+'"></div>'));
       var pl=e.pay&&e.pay.rate?({diario:'$'+e.pay.rate+'/día',semanal:'$'+e.pay.rate+'/sem',hora:'$'+e.pay.rate+'/h'}[e.pay.type||'diario']):'sin sueldo';
-      var bajaTag=e.end?' <span class="shtag chg">baja '+esc(e.endLabel||'')+'</span>':'';
+      var bajaTag=e.end?' <span class="shtag chg">baja '+esc(e.end)+'</span>':'';
+      if(e.start&&weekKey(startOfWeek(new Date()))<e.start)bajaTag+=' <span class="shtag chg">inicia '+esc(e.start)+'</span>';
       card.appendChild(el('<div class="info"><div class="nm">'+esc(e.name)+(e.mgr?' <span class="star">★ Encargado</span>':'')+bajaTag+'</div><div class="meta">'+AREAS[e.area].short+' · '+pl+' · Descanso: '+bdays+'</div></div>'));
       var b=el('<button class="edit">✎</button>');
       card.appendChild(b);
@@ -1116,6 +1120,13 @@ function openEmpSheet(empId){
         [['diario','Diario'],['semanal','Semanal'],['hora','Por hora']].map(function(p){var on=((emp.pay&&emp.pay.type)||'diario')===p[0];return '<button data-v="'+p[0]+'" class="'+(on?'on':'')+'" style="'+(on?'border-color:var(--ink);background:#EFEDE7':'')+'">'+p[1]+'</button>';}).join('')+
       '</div></div>'+
       '<div class="fgroup"><label id="rateLbl">Tarifa ($)</label><input class="field" id="eRate" type="number" inputmode="decimal" min="0" value="'+((emp.pay&&emp.pay.rate)||'')+'" placeholder="0"></div>'+
+      '<div class="fgroup"><label>Empieza a trabajar</label><select class="field" id="eStart">'+
+        (function(){var out='';for(var i=-1;i<4;i++){var m=addDays(startOfWeek(new Date()),7*i);var k=weekKey(m);
+          var lbl=(i===-1?'La semana pasada':i===0?'Esta semana':i===1?'La próxima semana':'En '+i+' semanas')+' · '+fmtRange(m);
+          var sel=(emp.start?emp.start===k:i===0)?' selected':'';
+          out+='<option value="'+k+'"'+sel+'>'+esc(lbl)+'</option>';}
+          return out;})()+
+      '</select><div class="hint">No aparecerá en semanas anteriores a esa (no altera tu historial).</div></div>'+
       '<div class="sheetfoot"><button class="btn primary" id="saveEmp">Guardar</button></div>'+
       (isNew?'':'<button class="linkbtn" id="bajaEmp">Dar de baja (conserva su historial)</button>')+
       (isNew?'':'<button class="linkbtn" id="delEmp" style="color:var(--warn)">Eliminar y borrar su historial</button>')+
@@ -1139,6 +1150,7 @@ function openEmpSheet(empId){
     if(!nm){toast('Escribe un nombre');return;}
     emp.name=nm;emp.shift=pick.shift;emp.area=pick.area;emp.mgr=pick.mgr;
     emp.pay={type:pick.payType,rate:parseFloat(sc.querySelector('#eRate').value)||0};
+    var st=sc.querySelector('#eStart');if(st)emp.start=st.value;
     if(isNew)employees.push(emp);
     else employees=employees.map(function(e){return e.id===emp.id?emp:e;});
     base[emp.id]=pick.days.sort(function(a,b){return a-b;});
