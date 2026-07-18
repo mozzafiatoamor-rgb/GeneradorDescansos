@@ -458,6 +458,13 @@ h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em}
     </div>
 
     <div class="setcard">
+      <div class="sh">Atributos / habilidades</div>
+      <div class="hint" style="margin-bottom:8px">Define habilidades (ej. Diligenciero, Barista) y asígnalas a cada empleado en su ficha. Activa "1 por turno" para que avise si falta cobertura.</div>
+      <div id="attrsList"></div>
+      <div class="addrow"><input class="field sm" id="attrName" placeholder="nombre del atributo"><button class="mini add" id="attrAdd">+ Agregar</button></div>
+    </div>
+
+    <div class="setcard">
       <div class="sh">Trabajadores dados de baja</div>
       <div id="bajasList"></div>
     </div>
@@ -551,6 +558,7 @@ function loadData(){
   if(!cfg.biz||cfg.biz==='Mi negocio')cfg.biz='Mozzafiato-El placer del buen café-';
   if(!isObj(cfg.rules))cfg.rules={crew:true,oneRest:false,mgr:false,minRest:true};
   if(cfg.rules.minRest===undefined)cfg.rules.minRest=true;
+  if(!Array.isArray(cfg.attrs))cfg.attrs=[{id:'diligencia',name:'Diligenciero (compras/envíos)',rule:true}];
   if(!base){base=generateBase();store.set(K.base,base);}
 }
 function save(){store.set(K.emp,employees);store.set(K.base,base);store.set(K.weeks,weeks);store.set(K.closed,closedDays);store.set(K.pay,payroll);store.set(K.cfg,cfg);store.set(K.autobak,snapshotData());}
@@ -662,6 +670,16 @@ function validateDay(mon,dayIdx){
         if(resting.length>=mgrs.length)warns.push('Los encargados de '+AREAS[area].short+' descansan el mismo día');
       }
     }
+  });
+  // atributos: mínimo 1 por turno
+  (cfg.attrs||[]).forEach(function(at){
+    if(!at.rule)return;
+    ['AM','PM'].forEach(function(shift){
+      var anyStaff=roster(mon).some(function(e){return e.shift===shift;});
+      if(!anyStaff)return;
+      var has=roster(mon).some(function(e){return e.attrs&&e.attrs.indexOf(at.id)>=0&&presentInTurno(effDuty(e,dayIdx,mon),shift);});
+      if(!has)warns.push('Falta '+at.name+' en '+SHIFTS[shift].label);
+    });
   });
   return warns;
 }
@@ -960,7 +978,8 @@ function renderPlantilla(){
       var pl=e.pay&&e.pay.rate?({diario:'$'+e.pay.rate+'/día',semanal:'$'+e.pay.rate+'/sem',hora:'$'+e.pay.rate+'/h'}[e.pay.type||'diario']):'sin sueldo';
       var bajaTag=e.end?' <span class="shtag chg">baja '+esc(e.end)+'</span>':'';
       if(e.start&&weekKey(startOfWeek(new Date()))<e.start)bajaTag+=' <span class="shtag chg">inicia '+esc(e.start)+'</span>';
-      card.appendChild(el('<div class="info"><div class="nm">'+esc(e.name)+(e.mgr?' <span class="star">★ Encargado</span>':'')+bajaTag+'</div><div class="meta">'+AREAS[e.area].short+' · '+pl+' · Descanso: '+bdays+'</div></div>'));
+      var atags=(e.attrs&&e.attrs.length&&cfg.attrs)?(' · '+e.attrs.map(function(id){var a=cfg.attrs.filter(function(x){return x.id===id;})[0];return a?a.name.split(' ')[0]:null;}).filter(Boolean).join(', ')):'';
+      card.appendChild(el('<div class="info"><div class="nm">'+esc(e.name)+(e.mgr?' <span class="star">★ Encargado</span>':'')+bajaTag+'</div><div class="meta">'+AREAS[e.area].short+' · '+pl+' · Descanso: '+bdays+esc(atags)+'</div></div>'));
       var b=el('<button class="edit">✎</button>');
       card.appendChild(b);
       host.appendChild(card);
@@ -980,6 +999,14 @@ function renderAjustes(){
   var rmr=document.getElementById('ruleMinRest');if(rmr)rmr.checked=!!R.minRest;
   renderBackupStatus();
   renderBajas();
+  renderAttrs();
+  var aa=document.getElementById('attrAdd');
+  if(aa)aa.onclick=function(){
+    var inp=document.getElementById('attrName'),nm=(inp.value||'').trim();if(!nm){toast('Escribe un nombre');return;}
+    if(!cfg.attrs)cfg.attrs=[];
+    cfg.attrs.push({id:uid().replace('e','a'),name:nm,rule:false});
+    inp.value='';save();renderAttrs();toast('Atributo agregado');
+  };
 }
 
 /* ---------- sheets ---------- */
@@ -1123,6 +1150,9 @@ function openEmpSheet(empId){
       '<div class="fgroup"><label>Descanso base (días de la semana)</label><div class="daychips" id="eDays">'+
         WD.map(function(l,i){return '<button data-d="'+i+'" class="'+(bdays.indexOf(i)>-1?'on':'')+'">'+l+'</button>';}).join('')+
       '</div></div>'+
+      ((cfg.attrs&&cfg.attrs.length)?('<div class="fgroup"><label>Atributos / habilidades</label><div class="daychips" id="eAttrs">'+
+        cfg.attrs.map(function(a){var on=(emp.attrs||[]).indexOf(a.id)>=0;return '<button data-at="'+a.id+'" class="'+(on?'on':'')+'">'+esc(a.name)+(a.rule?' •':'')+'</button>';}).join('')+
+      '</div><div class="hint">• = tiene regla de cobertura por turno.</div></div>'):'')+
       '<div class="fgroup"><label>Tipo de pago (nómina)</label><div class="segm" id="ePayType">'+
         [['diario','Diario'],['semanal','Semanal'],['hora','Por hora']].map(function(p){var on=((emp.pay&&emp.pay.type)||'diario')===p[0];return '<button data-v="'+p[0]+'" class="'+(on?'on':'')+'" style="'+(on?'border-color:var(--ink);background:#EFEDE7':'')+'">'+p[1]+'</button>';}).join('')+
       '</div></div>'+
@@ -1140,7 +1170,7 @@ function openEmpSheet(empId){
       (isNew?'':'<button class="linkbtn" id="delEmp" style="color:var(--warn)">Eliminar y borrar su historial</button>')+
     '</div>'
   );
-  var pick={shift:emp.shift,area:emp.area,mgr:emp.mgr,days:bdays.slice(),payType:(emp.pay&&emp.pay.type)||'diario'};
+  var pick={shift:emp.shift,area:emp.area,mgr:emp.mgr,days:bdays.slice(),payType:(emp.pay&&emp.pay.type)||'diario',attrs:(emp.attrs||[]).slice()};
   function updateRateLbl(){var l=sc.querySelector('#rateLbl');if(l)l.textContent=pick.payType==='diario'?'Sueldo por día ($)':pick.payType==='semanal'?'Sueldo semanal ($)':'Pago por hora ($)';}
   updateRateLbl();
   function seg(id,key,cb){sc.querySelectorAll('#'+id+' button').forEach(function(b){b.addEventListener('click',function(){
@@ -1153,10 +1183,13 @@ function openEmpSheet(empId){
   sc.querySelectorAll('#eDays button').forEach(function(b){b.addEventListener('click',function(){
     var d=parseInt(b.getAttribute('data-d'),10),i=pick.days.indexOf(d);
     if(i>-1){pick.days.splice(i,1);b.classList.remove('on');}else{pick.days.push(d);b.classList.add('on');}});});
+  sc.querySelectorAll('#eAttrs button').forEach(function(b){b.addEventListener('click',function(){
+    var a=b.getAttribute('data-at'),i=pick.attrs.indexOf(a);
+    if(i>-1){pick.attrs.splice(i,1);b.classList.remove('on');}else{pick.attrs.push(a);b.classList.add('on');}});});
   sc.querySelector('#saveEmp').addEventListener('click',function(){
     var nm=sc.querySelector('#eName').value.trim();
     if(!nm){toast('Escribe un nombre');return;}
-    emp.name=nm;emp.shift=pick.shift;emp.area=pick.area;emp.mgr=pick.mgr;
+    emp.name=nm;emp.shift=pick.shift;emp.area=pick.area;emp.mgr=pick.mgr;emp.attrs=pick.attrs;
     emp.pay={type:pick.payType,rate:parseFloat(sc.querySelector('#eRate').value)||0};
     if(emp.payHist&&emp.payHist.length){emp.payHist=emp.payHist.filter(function(x){return x.from!=='0';});emp.payHist.unshift({from:'0',type:emp.pay.type,rate:emp.pay.rate});}
     var st=sc.querySelector('#eStart');if(st)emp.start=st.value;
@@ -1203,6 +1236,27 @@ function openBajaSheet(empId){
   });
   var u=sc.querySelector('#bajaUndo');
   if(u)u.addEventListener('click',function(){delete emp.end;employees=employees.map(function(e){return e.id===emp.id?emp:e;});save();closeSheet();renderPlantilla();renderCalendar();toast('Reactivado');});
+}
+function renderAttrs(){
+  var host=document.getElementById('attrsList');if(!host)return;
+  var list=cfg.attrs||[];
+  if(!list.length){host.innerHTML='<div class="hint">Sin atributos aún.</div>';return;}
+  host.innerHTML='';
+  list.forEach(function(a){
+    var row=el('<div class="setrow toggle"><div class="tx"><b>'+esc(a.name)+'</b><small>Regla: al menos 1 por turno</small></div>'+
+      '<label class="swt"><input type="checkbox" '+(a.rule?'checked':'')+' data-rule="'+a.id+'"><span></span></label>'+
+      '<button class="mini warn" data-del="'+a.id+'" style="margin-left:8px">Quitar</button></div>');
+    host.appendChild(row);
+  });
+  host.querySelectorAll('[data-rule]').forEach(function(c){c.addEventListener('change',function(){
+    var id=c.getAttribute('data-rule'),a=cfg.attrs.filter(function(x){return x.id===id;})[0];if(a){a.rule=c.checked;save();renderCalendar();toast(c.checked?'Regla activada':'Regla desactivada');}
+  });});
+  host.querySelectorAll('[data-del]').forEach(function(b){b.addEventListener('click',function(){
+    var id=b.getAttribute('data-del');if(!confirm('¿Quitar este atributo? Se desasigna de los empleados.'))return;
+    cfg.attrs=cfg.attrs.filter(function(x){return x.id!==id;});
+    employees.forEach(function(e){if(e.attrs)e.attrs=e.attrs.filter(function(x){return x!==id;});});
+    save();renderAttrs();renderCalendar();toast('Atributo quitado');
+  });});
 }
 function renderBajas(){
   var host=document.getElementById('bajasList');if(!host)return;
