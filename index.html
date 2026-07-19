@@ -1885,7 +1885,7 @@ function statusImg(s){
   return {t:'Trabaja',bg:'#F4F1EA',fg:'#6b6152'};
 }
 function drawWeekImage(cb){
-  var scale=2, W=1080, pad=24;
+  var scale=3, W=1400, pad=30;
   var nameW=300, dayW=(W-pad*2-nameW)/7;
   var rowH=58, grpH=34, turnoH=52, dayHeadH=46;
   var fl=state.filters;
@@ -1956,26 +1956,159 @@ function drawWeekImage(cb){
     x.fillStyle='#9b917f';x.font='500 13px Arial';x.fillText('Rol '+fmtRange(state.week),pad,H-pad);
     cb(cv);
   }
-  if(!window._logoImg){var im=new Image(),done=false,go=function(){if(done)return;done=true;finish();};im.onload=go;im.onerror=go;window._logoImg=im;try{im.src=new URL('logo.png',location.href).href;}catch(e){go();return;}if(im.complete)go();else setTimeout(go,1500);}
-  else finish();
+  if(window._logoImg2Done){finish();} else {withLogo(function(){window._logoImg2Done=1;finish();});}
 }
-function shareWeekImage(){
-  toast('Generando imagen…');
-  drawWeekImage(function(cv){
-    cv.toBlob(function(blob){
-      if(!blob){toast('No se pudo generar la imagen');return;}
-      var fname='rol-'+iso(state.week)+'.png';
-      var file=new File([blob],fname,{type:'image/png'});
-      if(navigator.canShare&&navigator.canShare({files:[file]})){
-        navigator.share({files:[file],title:'Rol semanal',text:'Rol '+fmtRange(state.week)}).catch(function(){});
-      }else{
-        var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;a.click();
-        setTimeout(function(){URL.revokeObjectURL(a.href);},2000);toast('Imagen descargada');
-      }
-    },'image/png');
+
+
+function withLogo(fn){
+  if(window._logoImg){fn();return;}
+  var im=new Image(),done=false,go=function(){if(done)return;done=true;fn();};
+  im.onload=go;im.onerror=go;window._logoImg=im;
+  try{im.src=new URL('logo.png',location.href).href;}catch(e){go();return;}
+  if(im.complete)go();else setTimeout(go,1500);
+}
+function imgHeader(x,pad,W,rr,title){
+  var hy=pad;
+  x.fillStyle='#16181D';rr(pad,hy,220,72,14);x.fill();
+  if(window._logoImg&&window._logoImg.complete&&window._logoImg.naturalWidth){try{var iw=window._logoImg.naturalWidth,ih=window._logoImg.naturalHeight,ls=Math.min(190/iw,56/ih);x.drawImage(window._logoImg,pad+(220-iw*ls)/2,hy+(72-ih*ls)/2,iw*ls,ih*ls);}catch(e){}}
+  else{x.fillStyle='#fff';x.font='700 20px Arial';x.textBaseline='middle';x.fillText('Mozzafiato',pad+18,hy+36);}
+  x.textBaseline='alphabetic';x.fillStyle='#3D2B1A';x.font='700 25px Arial';x.fillText(title,pad+240,hy+32);
+  x.fillStyle='#7A6040';x.font='500 16px Arial';x.fillText('Semana '+fmtRange(state.week),pad+240,hy+56);
+}
+function drawNombresImage(cb){
+  var scale=3,W=1400,pad=30,nameW=190,dayW=(W-pad*2-nameW)/7;
+  var lineH=24,turnoH=52,dayHeadH=46;
+  var data=nombresData();
+  var H=pad+96+pad;
+  data.forEach(function(T){H+=turnoH+dayHeadH;T.areas.forEach(function(G){
+    var mx=1;G.days.forEach(function(p){mx=Math.max(mx,p.length||1);});G._h=mx*lineH+16;H+=G._h;});H+=16;});
+  H+=pad+30;
+  var cv=document.createElement('canvas');cv.width=W*scale;cv.height=H*scale;
+  var x=cv.getContext('2d');x.scale(scale,scale);
+  x.fillStyle='#F0E9DC';x.fillRect(0,0,W,H);
+  function rr(px,py,pw,ph,r){x.beginPath();x.moveTo(px+r,py);x.arcTo(px+pw,py,px+pw,py+ph,r);x.arcTo(px+pw,py+ph,px,py+ph,r);x.arcTo(px,py+ph,px,py,r);x.arcTo(px,py,px+pw,py,r);x.closePath();}
+  withLogo(function(){
+    imgHeader(x,pad,W,rr,'Rol · quién trabaja');
+    var y=pad+96,days=[];for(var d=0;d<7;d++)days.push({wd:WD[d],dt:addDays(state.week,d).getDate(),cl:isClosed(state.week,d)});
+    data.forEach(function(T){
+      x.fillStyle=T.turno==='AM'?'#F3E6D6':'#E2E6EE';rr(pad,y,W-pad*2,turnoH-8,12);x.fill();
+      x.fillStyle=T.turno==='AM'?'#9A5B1A':'#3F4756';x.font='800 20px Arial';x.textBaseline='middle';
+      x.fillText(T.turno==='AM'?'MAÑANA · 8:00–16:00':'TARDE · 16:00–24:00',pad+16,y+(turnoH-8)/2);y+=turnoH;
+      x.font='700 15px Arial';x.textAlign='center';x.textBaseline='middle';
+      for(var dd=0;dd<7;dd++){var cx0=pad+nameW+dayW*dd+dayW/2;x.fillStyle=days[dd].cl?'#b7b2a6':'#5a5346';x.fillText((days[dd].cl?'⊘ ':'')+days[dd].wd+' '+days[dd].dt,cx0,y+dayHeadH/2);}
+      x.textAlign='left';y+=dayHeadH;
+      T.areas.forEach(function(G){
+        var h=G._h;
+        x.fillStyle='#F6F3EC';rr(pad,y,nameW-4,h-4,8);x.fill();
+        x.fillStyle=AREAS[G.area].color;rr(pad,y,6,h-4,3);x.fill();
+        x.fillStyle='#5a5346';x.font='800 15px Arial';x.textBaseline='middle';x.fillText(AREAS[G.area].short,pad+16,y+h/2);
+        for(var d3=0;d3<7;d3++){
+          var cx=pad+nameW+dayW*d3, people=G.days[d3];
+          x.fillStyle=days[d3].cl?'#ECEAE4':'#fff';rr(cx+2,y+2,dayW-4,h-6,7);x.fill();
+          x.strokeStyle='#EEE9DE';x.lineWidth=1;rr(cx+2,y+2,dayW-4,h-6,7);x.stroke();
+          if(days[d3].cl){x.fillStyle='#9b917f';x.font='600 12px Arial';x.textAlign='center';x.textBaseline='middle';x.fillText('Cerrado',cx+dayW/2,y+h/2);x.textAlign='left';continue;}
+          if(!people.length){x.fillStyle='#c3bdb1';x.font='600 13px Arial';x.textAlign='center';x.textBaseline='middle';x.fillText('—',cx+dayW/2,y+h/2);x.textAlign='left';continue;}
+          var ly=y+12;
+          people.forEach(function(p){
+            x.textBaseline='middle';x.textAlign='left';
+            x.fillStyle=p.xtraOnly?'#186B62':'#2c2114';x.font='700 13px Arial';
+            var nm=p.name.split(' ')[0]+(p.mgr?' ★':'');
+            x.fillText(nm,cx+8,ly);
+            if(p.note){var nx=cx+8+x.measureText(nm).width+6;x.fillStyle=p.xtraOnly?'#186B62':'#8a8275';x.font='700 10px Arial';x.fillText(p.note.length>16?p.note.slice(0,15)+'…':p.note,nx,ly);}
+            ly+=lineH;
+          });
+        }
+        y+=h;
+      });
+      y+=16;
+    });
+    x.fillStyle='#9b917f';x.font='500 13px Arial';x.textBaseline='alphabetic';x.fillText('Rol '+fmtRange(state.week),pad,H-pad);
+    cb(cv);
   });
 }
-document.getElementById('imgBtn').addEventListener('click',shareWeekImage);
+function shareCanvas(cv){
+  cv.toBlob(function(blob){
+    if(!blob){toast('No se pudo generar la imagen');return;}
+    var fname='rol-'+iso(state.week)+'.png',file=new File([blob],fname,{type:'image/png'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:'Rol semanal',text:'Rol '+fmtRange(state.week)}).catch(function(){});}
+    else{var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},2000);toast('Imagen descargada');}
+  },'image/png');
+}
+document.getElementById('imgBtn').addEventListener('click',function(){
+  toast('Generando imagen…');
+  if(state.view==='nombres')drawNombresImage(shareCanvas);
+  else drawWeekImage(shareCanvas);
+});
+
+/* ---------- resumen en texto ---------- */
+function textPersonLine(e,day,turno,area){
+  var du=effDuty(e,day);
+  var work=(du.area===area&&dutyInTurno(du,turno));
+  var xtra=(du.area===area&&extraInTurno(du,turno));
+  if(!work&&!xtra)return null;
+  var tags=[];
+  if(work){
+    if(du.st==='medio')tags.push(du.am&&du.pm?'medio: mañana y noche':(du.am?'medio turno mañana':'medio turno noche'));
+    else if(du.st==='cortado')tags.push('cortado');
+    if(e.shift!==turno||e.area!==area)tags.push('cambia a este puesto');
+    if(du.xt)tags.push('+'+du.xt.h+'h extra '+du.xt.lbl);
+    if(du.task)tags.push(du.task);
+  }else{tags.push('solo '+du.xt.h+'h extra '+du.xt.lbl);}
+  return e.name+(e.mgr?' (enc.)':'')+(tags.length?' ('+tags.join('; ')+')':'');
+}
+function buildTextSummary(){
+  var fl=state.filters;
+  var shifts=(fl.turnos&&fl.turnos.length)?['AM','PM'].filter(function(t){return fl.turnos.indexOf(t)>=0;}):['AM','PM'];
+  var areasSel=AREA_ORDER.filter(function(a){return !(fl.areas&&fl.areas.length)||fl.areas.indexOf(a)>=0;});
+  var list=filteredEmployees();
+  var out='*Rol — Semana '+fmtRange(state.week)+'*\n'+((cfg.biz||'').split('-')[0].trim())+'\n';
+  var wk=validateWeek(state.week);
+  if(wk.length)out+='\n_Avisos de la semana:_\n'+wk.map(function(w){return '• '+w;}).join('\n')+'\n';
+  var WDF=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+  for(var d=0;d<7;d++){
+    var date=addDays(state.week,d);
+    out+='\n*'+WDF[d].toUpperCase()+' '+date.getDate()+'*\n';
+    if(isClosed(state.week,d)){out+='_Cerrado por mantenimiento._\n';continue;}
+    shifts.forEach(function(turno){
+      var any=[];
+      areasSel.forEach(function(area){
+        var names=list.filter(function(e){return inGroupWeek(e,turno,area);})
+          .sort(function(a,b){return (b.mgr?1:0)-(a.mgr?1:0)||a.name.localeCompare(b.name);})
+          .map(function(e){return textPersonLine(e,d,turno,area);}).filter(Boolean);
+        if(names.length)any.push('• '+AREAS[area].short+': '+names.join(', '));
+      });
+      if(any.length){out+='_'+(turno==='AM'?'Mañana':'Tarde')+'_\n'+any.join('\n')+'\n';}
+    });
+    var rest=list.filter(function(e){return effStatus(e.id,state.week,d).st==='rest';}).map(function(e){return e.name.split(' ')[0];});
+    if(rest.length)out+='Descansan: '+rest.join(', ')+'\n';
+    var av=validateDay(state.week,d);
+    if(av.length)out+='Avisos: '+av.join('; ')+'\n';
+  }
+  out+='\n_Generado desde la app._';
+  return out;
+}
+function openTextSummary(){
+  applyRolesForWeek(state.week);
+  var txt=buildTextSummary();
+  openSheet(
+    '<div class="shead"><div class="t">Resumen en texto</div><div class="s">'+fmtRange(state.week)+' · para WhatsApp</div></div>'+
+    '<div class="sbody">'+
+      '<textarea id="sumTxt" readonly style="width:100%;height:300px;border:1px solid var(--line,#E7E1D5);border-radius:10px;padding:10px;font-size:13px;line-height:1.5;background:#fff;color:#2c2114;-webkit-user-select:text;user-select:text">'+esc(txt)+'</textarea>'+
+      '<div class="hint" style="margin:6px 0">Los *asteriscos* y _guiones_ se convierten en negrita/cursiva al pegarlo en WhatsApp.</div>'+
+      '<div class="sheetfoot"><button class="btn primary" id="sumCopy">Copiar</button><button class="btn ghost" id="sumShare">Compartir</button></div>'+
+    '</div>'
+  );
+  sc.querySelector('#sumCopy').addEventListener('click',function(){
+    var ta=sc.querySelector('#sumTxt');ta.focus();ta.select();
+    var ok=false;try{ok=document.execCommand('copy');}catch(e){}
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(function(){toast('Copiado');},function(){toast(ok?'Copiado':'Selecciona y copia');});}
+    else toast(ok?'Copiado':'Selecciona y copia');
+  });
+  sc.querySelector('#sumShare').addEventListener('click',function(){
+    if(navigator.share){navigator.share({text:txt,title:'Rol '+fmtRange(state.week)}).catch(function(){});}
+    else{var ta=sc.querySelector('#sumTxt');ta.focus();ta.select();try{document.execCommand('copy');toast('Copiado (pégalo en WhatsApp)');}catch(e){toast('Selecciona y copia');}}
+  });
+}
 
 function openCalPrintSheet(){
   openSheet(
@@ -1983,11 +2116,13 @@ function openCalPrintSheet(){
     '<div class="sbody">'+
       '<button class="btn ghost wide" id="prRol">Rol completo (con descansos)</button>'+
       '<button class="btn primary wide" id="prNom">Solo nombres de quien trabaja</button>'+
-      '<div class="hint">Se imprime respetando los filtros de turno/área que tengas puestos.</div>'+
+      '<button class="btn ghost wide" id="prTxt">📝 Resumen en texto (WhatsApp)</button>'+
+      '<div class="hint">Se genera respetando los filtros de turno/área que tengas puestos.</div>'+
     '</div>'
   );
   sc.querySelector('#prRol').addEventListener('click',function(){closeSheet();printDoc(buildPrint(),false);});
   sc.querySelector('#prNom').addEventListener('click',function(){closeSheet();printDoc(buildNombresPrint(),false);});
+  sc.querySelector('#prTxt').addEventListener('click',function(){closeSheet();openTextSummary();});
 }
 
 /* ---------- arrastrar descanso ---------- */
