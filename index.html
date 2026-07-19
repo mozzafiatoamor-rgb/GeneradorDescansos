@@ -374,6 +374,7 @@ h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em}
         </div>
       </div>
     </div>
+    <button class="iconbtn" id="imgBtn" title="Imagen para enviar">📸</button>
     <button class="iconbtn" id="printBtn" title="Imprimir / PDF">⎙</button>
   </div>
 
@@ -1301,6 +1302,7 @@ function setTab(t){
   });
   var cc=document.getElementById('calControls');if(cc)cc.style.display=t==='cal'?'block':'none';
   var pb=document.getElementById('printBtn');if(pb)pb.style.display=(t==='cal'||t==='nomina')?'grid':'none';
+  var ib=document.getElementById('imgBtn');if(ib)ib.style.display=(t==='cal')?'grid':'none';
   var fab=document.getElementById('addEmpFab');if(fab)fab.style.display=t==='plantilla'?'flex':'none';
   try{
     if(t==='cal')renderCalendar();
@@ -1872,6 +1874,109 @@ function buildNombresPrint(){
   if(!data.length)html+='<div class="psub">Nadie trabaja con estos filtros.</div>';
   document.getElementById('print-area').innerHTML=html;return html;
 }
+/* ---------- imagen para enviar ---------- */
+function statusImg(s){
+  if(s.st==='rest')return {t:'DESCANSO',bg:'#EF4E5B',fg:'#fff'};
+  if(s.st==='closed')return {t:'CERRADO',bg:'#D9D6CF',fg:'#555'};
+  if(s.st==='medio')return {t:medioLabel(s,true),bg:'#D4E2EF',fg:'#264a63'};
+  if(s.st==='cortado')return {t:'Cortado',bg:'#FBE4BB',fg:'#6b4a12'};
+  if(s.st==='extra')return {t:'Extra '+s.lbl,bg:'#E4F1EE',fg:'#186B62'};
+  if(s.st==='off')return s.moved?{t:s.moved,bg:'#FBF3F6',fg:'#A85B7C',it:true}:{t:'',bg:'#FCFCFB',fg:'#ccc'};
+  return {t:'Trabaja',bg:'#F4F1EA',fg:'#6b6152'};
+}
+function drawWeekImage(cb){
+  var scale=2, W=1080, pad=24;
+  var nameW=300, dayW=(W-pad*2-nameW)/7;
+  var rowH=58, grpH=34, turnoH=52, dayHeadH=46;
+  var fl=state.filters;
+  var shifts=(fl.turnos&&fl.turnos.length)?['AM','PM'].filter(function(t){return fl.turnos.indexOf(t)>=0;}):['AM','PM'];
+  var list=filteredEmployees();
+  var blocks=[];
+  var H=pad+96+pad;
+  shifts.forEach(function(turno){
+    var tl=list.filter(function(e){return inTurnoWeek(e,turno);});
+    var groups=[];
+    AREA_ORDER.forEach(function(area){
+      if(fl.areas&&fl.areas.length&&fl.areas.indexOf(area)<0)return;
+      var ge=tl.filter(function(e){return inGroupWeek(e,turno,area);}).sort(function(a,b){return (b.mgr?1:0)-(a.mgr?1:0)||a.name.localeCompare(b.name);});
+      if(ge.length)groups.push({area:area,emps:ge});
+    });
+    if(!groups.length)return;
+    var bh=turnoH+dayHeadH;groups.forEach(function(g){bh+=grpH+g.emps.length*rowH;});
+    blocks.push({turno:turno,groups:groups,h:bh});H+=bh+16;
+  });
+  H+=pad+40;
+  var cv=document.createElement('canvas');cv.width=W*scale;cv.height=H*scale;
+  var x=cv.getContext('2d');x.scale(scale,scale);
+  x.fillStyle='#F0E9DC';x.fillRect(0,0,W,H);
+  function rr(px,py,pw,ph,r){x.beginPath();x.moveTo(px+r,py);x.arcTo(px+pw,py,px+pw,py+ph,r);x.arcTo(px+pw,py+ph,px,py+ph,r);x.arcTo(px,py+ph,px,py,r);x.arcTo(px,py,px+pw,py,r);x.closePath();}
+  function finish(){
+    var hy=pad;
+    x.fillStyle='#16181D';rr(pad,hy,220,72,14);x.fill();
+    if(window._logoImg&&window._logoImg.complete&&window._logoImg.naturalWidth){try{var iw=window._logoImg.naturalWidth,ih=window._logoImg.naturalHeight,ls=Math.min(190/iw,56/ih);x.drawImage(window._logoImg,pad+(220-iw*ls)/2,hy+(72-ih*ls)/2,iw*ls,ih*ls);}catch(e){}}
+    else{x.fillStyle='#fff';x.font='700 20px Arial';x.textBaseline='middle';x.fillText('Mozzafiato',pad+18,hy+36);}
+    x.textBaseline='alphabetic';x.fillStyle='#3D2B1A';x.font='700 26px Arial';x.fillText(((cfg.biz||'').split('-')[0].trim())||'Rol semanal',pad+240,hy+34);
+    x.fillStyle='#7A6040';x.font='500 16px Arial';x.fillText('Semana '+fmtRange(state.week),pad+240,hy+58);
+    var y=pad+96, days=[];for(var d=0;d<7;d++)days.push({wd:WD[d],dt:addDays(state.week,d).getDate(),cl:isClosed(state.week,d)});
+    blocks.forEach(function(B){
+      x.fillStyle=B.turno==='AM'?'#F3E6D6':'#E2E6EE';rr(pad,y,W-pad*2,turnoH-8,12);x.fill();
+      x.fillStyle=B.turno==='AM'?'#9A5B1A':'#3F4756';x.font='800 20px Arial';x.textBaseline='middle';
+      x.fillText(B.turno==='AM'?'MAÑANA · 8:00–16:00':'TARDE · 16:00–24:00',pad+16,y+(turnoH-8)/2);
+      y+=turnoH;
+      x.font='700 15px Arial';x.textAlign='center';x.textBaseline='middle';
+      for(var dd=0;dd<7;dd++){var cx0=pad+nameW+dayW*dd+dayW/2;x.fillStyle=days[dd].cl?'#b7b2a6':'#5a5346';x.fillText((days[dd].cl?'⊘ ':'')+days[dd].wd+' '+days[dd].dt,cx0,y+dayHeadH/2);}
+      x.textAlign='left';y+=dayHeadH;
+      B.groups.forEach(function(g){
+        x.fillStyle='#EFEDE7';rr(pad,y,W-pad*2,grpH-4,8);x.fill();
+        x.fillStyle=AREAS[g.area].color;rr(pad,y,6,grpH-4,3);x.fill();
+        x.fillStyle='#5a5346';x.font='800 15px Arial';x.textBaseline='middle';x.fillText(AREAS[g.area].short,pad+16,y+(grpH-4)/2);
+        y+=grpH;
+        g.emps.forEach(function(e){
+          x.fillStyle=AREAS[g.area].color;x.fillRect(pad,y+6,5,rowH-12);
+          var foreign=!(e.shift===B.turno&&e.area===g.area);
+          x.fillStyle='#2c2114';x.font='700 16px Arial';x.textBaseline='middle';
+          var nm=e.name+(e.mgr?' ★':'');
+          x.fillText(nm.length>26?nm.slice(0,25)+'…':nm,pad+14,y+rowH/2-(foreign?7:0));
+          if(foreign){x.fillStyle='#8A2E50';x.font='700 12px Arial';x.fillText(doubleSomeDay(e)?'doble':'cambio',pad+14,y+rowH/2+11);}
+          for(var d2=0;d2<7;d2++){
+            var cx=pad+nameW+dayW*d2, s=cellInTurnoArea(e,d2,B.turno,g.area), si=statusImg(s);
+            x.fillStyle=si.bg;rr(cx+2,y+4,dayW-4,rowH-8,7);x.fill();
+            if(si.t){x.fillStyle=si.fg;x.font=(si.it?'italic ':'')+'700 13px Arial';x.textAlign='center';x.textBaseline='middle';
+              var tt=si.t.length>13?si.t.slice(0,12)+'…':si.t;var two=(s.xt||s.task);
+              x.fillText(tt,cx+dayW/2,y+rowH/2-(two?7:0));
+              if(s.xt){x.fillStyle='#186B62';x.font='700 11px Arial';x.fillText('+'+s.xt.h+'h '+s.xt.lbl,cx+dayW/2,y+rowH/2+9);}
+              else if(s.task){x.fillStyle='#8A5A12';x.font='700 11px Arial';x.fillText('🛒'+s.task,cx+dayW/2,y+rowH/2+9);}
+              x.textAlign='left';}
+          }
+          y+=rowH;
+        });
+      });
+      y+=16;
+    });
+    x.fillStyle='#9b917f';x.font='500 13px Arial';x.fillText('Rol '+fmtRange(state.week),pad,H-pad);
+    cb(cv);
+  }
+  if(!window._logoImg){var im=new Image(),done=false,go=function(){if(done)return;done=true;finish();};im.onload=go;im.onerror=go;window._logoImg=im;try{im.src=new URL('logo.png',location.href).href;}catch(e){go();return;}if(im.complete)go();else setTimeout(go,1500);}
+  else finish();
+}
+function shareWeekImage(){
+  toast('Generando imagen…');
+  drawWeekImage(function(cv){
+    cv.toBlob(function(blob){
+      if(!blob){toast('No se pudo generar la imagen');return;}
+      var fname='rol-'+iso(state.week)+'.png';
+      var file=new File([blob],fname,{type:'image/png'});
+      if(navigator.canShare&&navigator.canShare({files:[file]})){
+        navigator.share({files:[file],title:'Rol semanal',text:'Rol '+fmtRange(state.week)}).catch(function(){});
+      }else{
+        var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;a.click();
+        setTimeout(function(){URL.revokeObjectURL(a.href);},2000);toast('Imagen descargada');
+      }
+    },'image/png');
+  });
+}
+document.getElementById('imgBtn').addEventListener('click',shareWeekImage);
+
 function openCalPrintSheet(){
   openSheet(
     '<div class="shead"><div class="t">Imprimir calendario</div><div class="s">'+fmtRange(state.week)+'</div></div>'+
