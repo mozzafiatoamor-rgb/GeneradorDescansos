@@ -1904,11 +1904,129 @@ function pasteRolInto(mon){
   save();
 }
 function repeatRolWeeks(mon,n){copyRol(mon);for(var i=1;i<=n;i++)pasteRolInto(addDays(mon,7*i));}
+/* ---------- rol automático ---------- */
+function ruleAttrs(){return (cfg.attrs||[]).filter(function(a){return a.rule;});}
+function generateAuto(mon,conds){
+  var key=weekKey(mon),ros=roster(mon),warns=[];
+  var only={},frest={},ovr={};
+  (conds||[]).forEach(function(c){
+    if(c.type==='only')only[c.empId]=(c.days||[]).slice();
+    else if(c.type==='rest')frest[c.empId]=(frest[c.empId]||[]).concat(c.days||[]);
+    else if(c.type==='shiftarea')ovr[c.empId]={shift:c.shift,area:c.area};
+  });
+  var A={};
+  ros.forEach(function(e){A[e.id]=[];for(var d=0;d<7;d++){A[e.id][d]={st:'work',shift:(ovr[e.id]&&ovr[e.id].shift)||e.shift,area:(ovr[e.id]&&ovr[e.id].area)||e.area,forced:false};}});
+  ros.forEach(function(e){if(only[e.id]){for(var d=0;d<7;d++){var on=only[e.id].indexOf(d)>=0;A[e.id][d].st=on?'work':'rest';A[e.id][d].forced=true;}}});
+  ros.forEach(function(e){(frest[e.id]||[]).forEach(function(d){if(A[e.id][d]){A[e.id][d].st='rest';A[e.id][d].forced=true;}});});
+  function crew(area,shift,d){var n=0;ros.forEach(function(e){var a=A[e.id][d];if(a.st==='work'&&a.area===area&&a.shift===shift)n++;});return n;}
+  function tierRest(e,d){
+    if(isClosed(mon,d))return -1;
+    var a=A[e.id][d];if(a.st!=='work'||a.forced)return -1;
+    if(crew(a.area,a.shift,d)-1<MIN_CREW[a.area])return -1;
+    var breaksDilig=false;
+    ruleAttrs().forEach(function(at){if(e.attrs&&e.attrs.indexOf(at.id)>=0){
+      var others=ros.some(function(x){return x.id!==e.id&&A[x.id][d].st==='work'&&A[x.id][d].shift===a.shift&&x.attrs&&x.attrs.indexOf(at.id)>=0;});
+      if(!others)breaksDilig=true;}});
+    var breaksMgr=false;
+    if(e.mgr){var mg=ros.filter(function(x){return x.area===e.area&&x.mgr;});if(mg.length>=2){if(!mg.some(function(x){return x.id!==e.id&&A[x.id][d].st==='work';}))breaksMgr=true;}}
+    if(breaksDilig)return 2;if(breaksMgr)return 1;return 0;
+  }
+  var restsPerDay=[0,0,0,0,0,0,0];
+  ros.forEach(function(e){for(var d=0;d<7;d++)if(A[e.id][d].st==='rest')restsPerDay[d]++;});
+  var order=ros.filter(function(e){return !only[e.id];}).sort(function(a,b){return (a.mgr?1:0)-(b.mgr?1:0);});
+  order.forEach(function(e){
+    var have=0;for(var d=0;d<7;d++)if(A[e.id][d].st==='rest'||isClosed(mon,d))have++;
+    var need=Math.max(0,restDaysFor(e)-have);
+    for(var n=0;n<need;n++){
+      var cands=[];for(var d=0;d<4;d++){var t=tierRest(e,d);if(t>=0)cands.push({d:d,t:t});}
+      var ok=cands.filter(function(c){return c.t<=1;}); // 0=todo ok, 1=rompe encargado (permitido)
+      if(!ok.length){
+        if(cands.length)warns.push('No pude dar descanso a '+e.name.split(' ')[0]+' sin dejar un turno sin diligenciero.');
+        else warns.push('No pude dar descanso a '+e.name.split(' ')[0]+' sin dejar la cuadrilla incompleta.');
+        break;
+      }
+      ok.sort(function(x,y){return x.t-y.t||restsPerDay[x.d]-restsPerDay[y.d];});
+      var pk=ok[0];A[e.id][pk.d].st='rest';restsPerDay[pk.d]++;
+      if(pk.t===1)warns.push('El descanso de '+e.name.split(' ')[0]+' deja su área sin encargado ese día.');
+    }
+  });
+  var out={};
+  ros.forEach(function(e){
+    var o={},has=false;
+    for(var d=0;d<7;d++){var a=A[e.id][d],baseRest=(base[e.id]||[]).indexOf(d)>-1;
+      if(a.st==='rest'){o[d]={st:'rest',cover:null};has=true;}
+      else{var ob={st:'work',cover:null},need=false;
+        if(a.shift!==e.shift){ob.shift=a.shift;need=true;}
+        if(a.area!==e.area){ob.area=a.area;need=true;}
+        if(baseRest)need=true;
+        if(need){o[d]=ob;has=true;}}
+    }
+    if(has)out[e.id]=o;
+  });
+  weeks[key]=out;save();
+  return {warnings:warns};
+}
+function openAutoSheet(){
+  var conds=[];
+  var ros=roster(state.week);
+  function condLabel(c){var e=byId(c.empId);var nm=e?e.name.split(' ')[0]:'?';
+    if(c.type==='only')return nm+': solo '+(c.days||[]).map(function(d){return WD[d];}).join(',');
+    if(c.type==='rest')return nm+': descansa '+(c.days||[]).map(function(d){return WD[d];}).join(',');
+    return nm+': '+(c.shift==='AM'?'Mañana':'Tarde')+' · '+AREAS[c.area].short;}
+  function paint(){
+    var empOpts=ros.slice().sort(function(a,b){return a.name.localeCompare(b.name);}).map(function(e){return '<option value="'+e.id+'">'+esc(e.name)+'</option>';}).join('');
+    var condHtml=conds.length?conds.map(function(c,i){return '<div class="liitem"><span>'+esc(condLabel(c))+'</span><button class="rm" data-ci="'+i+'">×</button></div>';}).join(''):'<div class="hint">Sin condiciones. Se aplican las reglas y descansos lun–jue.</div>';
+    sc.innerHTML=
+      '<div class="shead"><div class="t">Rol automático</div><div class="s">'+fmtRange(state.week)+' · reemplaza esta semana</div></div>'+
+      '<div class="sbody">'+
+        '<div class="hint" style="margin-bottom:8px">Prioridad: cuadrilla → diligenciero → descanso (lun–jue) → encargado. Solo aplica a esta semana; no cambia otras.</div>'+
+        '<div class="fgroup"><label>Condiciones de esta semana</label><div class="lilist">'+condHtml+'</div></div>'+
+        '<div class="fgroup"><label>Agregar condición</label>'+
+          '<select class="field sm" id="acEmp" style="margin-bottom:6px">'+empOpts+'</select>'+
+          '<div class="segm" id="acType" style="margin-bottom:6px">'+
+            '<button data-v="only" class="on">Solo estos días</button><button data-v="rest">Forzar descanso</button><button data-v="shiftarea">Turno/área</button>'+
+          '</div>'+
+          '<div id="acDays" class="daychips">'+WD.map(function(l,i){return '<button data-d="'+i+'">'+l+'</button>';}).join('')+'</div>'+
+          '<div id="acSA" style="display:none">'+
+            '<div class="daychips" id="acShift"><button data-s="AM">Mañana</button><button data-s="PM">Tarde</button></div>'+
+            '<div class="daychips" id="acArea" style="margin-top:4px">'+AREA_ORDER.map(function(a){return '<button data-ar="'+a+'">'+AREAS[a].short+'</button>';}).join('')+'</div>'+
+          '</div>'+
+          '<button class="mini add" id="acAdd" style="margin-top:8px">+ Agregar condición</button>'+
+        '</div>'+
+        '<div class="sheetfoot"><button class="btn primary" id="acGo">Generar propuesta</button></div>'+
+      '</div>';
+    var sel={type:'only',days:[],shift:'AM',area:AREA_ORDER[0]};
+    function syncType(){sc.querySelector('#acDays').style.display=(sel.type==='shiftarea')?'none':'flex';sc.querySelector('#acSA').style.display=(sel.type==='shiftarea')?'block':'none';}
+    sc.querySelectorAll('#acType button').forEach(function(b){b.addEventListener('click',function(){sel.type=b.getAttribute('data-v');sc.querySelectorAll('#acType button').forEach(function(x){x.classList.remove('on');});b.classList.add('on');syncType();});});
+    sc.querySelectorAll('#acDays button').forEach(function(b){b.addEventListener('click',function(){var d=+b.getAttribute('data-d'),i=sel.days.indexOf(d);if(i>-1){sel.days.splice(i,1);b.classList.remove('on');}else{sel.days.push(d);b.classList.add('on');}});});
+    sc.querySelectorAll('#acShift button').forEach(function(b){b.addEventListener('click',function(){sel.shift=b.getAttribute('data-s');sc.querySelectorAll('#acShift button').forEach(function(x){x.classList.remove('on');});b.classList.add('on');});});
+    sc.querySelectorAll('#acArea button').forEach(function(b){b.addEventListener('click',function(){sel.area=b.getAttribute('data-ar');sc.querySelectorAll('#acArea button').forEach(function(x){x.classList.remove('on');});b.classList.add('on');});});
+    sc.querySelector('#acAdd').addEventListener('click',function(){
+      var empId=sc.querySelector('#acEmp').value;
+      if(sel.type==='shiftarea')conds.push({empId:empId,type:'shiftarea',shift:sel.shift,area:sel.area});
+      else{if(!sel.days.length){toast('Elige días');return;}conds.push({empId:empId,type:sel.type,days:sel.days.slice()});}
+      paint();
+    });
+    sc.querySelectorAll('[data-ci]').forEach(function(b){b.addEventListener('click',function(){conds.splice(+b.getAttribute('data-ci'),1);paint();});});
+    sc.querySelector('#acGo').addEventListener('click',function(){
+      if(!confirm('Se reemplazará el rol de '+fmtRange(state.week)+' con la propuesta automática. ¿Continuar?'))return;
+      var res=generateAuto(state.week,conds);
+      closeSheet();renderCalendar();
+      if(res.warnings.length)setTimeout(function(){alert('Propuesta lista, pero revisa:\n\n• '+res.warnings.join('\n• '));},200);
+      else toast('Rol automático generado');
+    });
+  }
+  openSheet('<div class="sbody"></div>');paint();
+}
+
 function openRolSheet(){
   var hasClip=!!rolClip,hasRol=weekHasRol(state.week);
   openSheet(
     '<div class="shead"><div class="t">Rol de la semana</div><div class="s">'+fmtRange(state.week)+'</div></div>'+
     '<div class="sbody">'+
+      '<button class="btn primary wide" id="rolAuto">✨ Generar rol automático</button>'+
+      '<div class="hint" style="margin:2px 0 10px">Arma descansos y turnos siguiendo las reglas. Puedes dictar condiciones (ej. alguien solo trabaja sáb–dom).</div>'+
+      '<div class="divider"></div>'+
       '<button class="btn ghost wide" id="rolCopy">📋 Copiar rol de esta semana</button>'+
       '<button class="btn ghost wide" id="rolPaste"'+(hasClip?'':' disabled')+'>📥 Pegar rol aquí'+(hasClip?' (copiado: '+esc(rolClip.src)+')':'')+'</button>'+
       '<div class="hint" style="margin:2px 0 10px">Pegar <b>reemplaza</b> todo el rol de esta semana (incluye cambios de turno/puesto, medios, tareas y días cerrados).</div>'+
@@ -1923,6 +2041,7 @@ function openRolSheet(){
   function setN(v){n=Math.max(1,Math.min(52,v));sc.querySelector('#nVal').textContent=n;sc.querySelector('#nEcho').textContent=n;}
   sc.querySelector('#nMinus').addEventListener('click',function(){setN(n-1);});
   sc.querySelector('#nPlus').addEventListener('click',function(){setN(n+1);});
+  var ra=sc.querySelector('#rolAuto');if(ra)ra.addEventListener('click',function(){closeSheet();openAutoSheet();});
   sc.querySelector('#rolCopy').addEventListener('click',function(){if(!hasRol&&!confirm('Esta semana no tiene ajustes de rol (todo en patrón base). ¿Copiar de todas formas?'))return;copyRol(state.week);closeSheet();toast('Rol copiado');});
   var pb=sc.querySelector('#rolPaste');if(pb&&hasClip)pb.addEventListener('click',function(){if(!confirm('Reemplazar el rol de '+fmtRange(state.week)+' con el copiado de '+rolClip.src+'?'))return;pasteRolInto(state.week);closeSheet();renderCalendar();toast('Rol pegado');});
   sc.querySelector('#rolNext').addEventListener('click',function(){
