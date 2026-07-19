@@ -550,6 +550,7 @@ function loadData(){
     else {employees=seedEmployees();}
     store.set(K.emp,employees);
   }
+  employees.forEach(function(e){if(!e.base0)e.base0={shift:e.shift,area:e.area,mgr:!!e.mgr};});
   base=store.get(K.base,null); if(!isObj(base))base=(ab&&isObj(ab.base))?ab.base:null;
   weeks=store.get(K.weeks,null); if(!isObj(weeks))weeks=(ab&&isObj(ab.weeks))?ab.weeks:{};
   closedDays=store.get(K.closed,null); if(!isObj(closedDays))closedDays=(ab&&isObj(ab.closed))?ab.closed:{};
@@ -602,6 +603,11 @@ function effStatus(empId,mon,dayIdx){if(isClosed(mon,dayIdx))return {st:'closed'
 
 /* ---------- generator ---------- */
 function restDaysFor(emp){return emp.restDays||cfg.defRest||1;}
+function empBase0(e){return e.base0||{shift:e.shift,area:e.area,mgr:!!e.mgr};}
+function empRoleAt(e,mon){var b=empBase0(e),r={shift:b.shift,area:b.area,mgr:!!b.mgr},k=weekKey(mon);
+  (e.roleHist||[]).slice().sort(function(a,c){return a.from<c.from?-1:1;}).forEach(function(x){if(x.from<=k){if(x.shift)r.shift=x.shift;if(x.area)r.area=x.area;if('mgr' in x)r.mgr=!!x.mgr;}});
+  return r;}
+function applyRolesForWeek(mon){employees.forEach(function(e){if(!e.base0)e.base0={shift:e.shift,area:e.area,mgr:!!e.mgr};var r=empRoleAt(e,mon);e.shift=r.shift;e.area=r.area;e.mgr=r.mgr;});}
 function activeInWeek(e,mon){if(!e)return false;var k=weekKey(mon);
   if(e.start&&k<e.start)return false;
   if(e.end&&k>=e.end)return false;
@@ -950,6 +956,7 @@ function showRenderError(containerId,e){
 }
 function renderCalendar(){
   try{
+    applyRolesForWeek(state.week);
     renderHeader();renderWarnbar();
     var sv=document.getElementById('semanaView'),dv=document.getElementById('diaView'),nv=document.getElementById('nombresView');
     if(sv)sv.style.display=state.view==='semana'?'block':'none';
@@ -961,6 +968,7 @@ function renderCalendar(){
 
 /* ---------- plantilla ---------- */
 function renderPlantilla(){
+  applyRolesForWeek(state.week);
   var host=document.getElementById('plantillaList');host.innerHTML='';
   ['AM','PM'].forEach(function(shift){
     var emps=[];
@@ -1159,12 +1167,14 @@ function openEmpSheet(empId){
       '<div class="fgroup"><label id="rateLbl">Tarifa ($)</label><input class="field" id="eRate" type="number" inputmode="decimal" min="0" value="'+((emp.pay&&emp.pay.rate)||'')+'" placeholder="0"></div>'+
       (isNew?'':'<button class="linkbtn" id="mgrSueldo" style="text-align:left;color:var(--plum)">📈 Aumentos de sueldo (con fecha)…</button>')+
       '<div class="fgroup"><label>Empieza a trabajar</label><select class="field" id="eStart">'+
+        '<option value=""'+(emp.start?'':' selected')+'>Desde el inicio (siempre)</option>'+
         (function(){var out='';for(var i=-1;i<4;i++){var m=addDays(startOfWeek(new Date()),7*i);var k=weekKey(m);
           var lbl=(i===-1?'La semana pasada':i===0?'Esta semana':i===1?'La próxima semana':'En '+i+' semanas')+' · '+fmtRange(m);
-          var sel=(emp.start?emp.start===k:i===0)?' selected':'';
+          var sel=(emp.start&&emp.start===k)?' selected':'';
           out+='<option value="'+k+'"'+sel+'>'+esc(lbl)+'</option>';}
           return out;})()+
       '</select><div class="hint">No aparecerá en semanas anteriores a esa (no altera tu historial).</div></div>'+
+      (isNew?'':'<button class="linkbtn" id="mgrRole" style="text-align:left;color:var(--plum)">🔀 Cambios de turno/área con fecha…</button>')+
       '<div class="sheetfoot"><button class="btn primary" id="saveEmp">Guardar</button></div>'+
       (isNew?'':'<button class="linkbtn" id="bajaEmp">Dar de baja (conserva su historial)</button>')+
       (isNew?'':'<button class="linkbtn" id="delEmp" style="color:var(--warn)">Eliminar y borrar su historial</button>')+
@@ -1190,9 +1200,10 @@ function openEmpSheet(empId){
     var nm=sc.querySelector('#eName').value.trim();
     if(!nm){toast('Escribe un nombre');return;}
     emp.name=nm;emp.shift=pick.shift;emp.area=pick.area;emp.mgr=pick.mgr;emp.attrs=pick.attrs;
+    emp.base0={shift:pick.shift,area:pick.area,mgr:!!pick.mgr};
     emp.pay={type:pick.payType,rate:parseFloat(sc.querySelector('#eRate').value)||0};
     if(emp.payHist&&emp.payHist.length){emp.payHist=emp.payHist.filter(function(x){return x.from!=='0';});emp.payHist.unshift({from:'0',type:emp.pay.type,rate:emp.pay.rate});}
-    var st=sc.querySelector('#eStart');if(st)emp.start=st.value;
+    var st=sc.querySelector('#eStart');if(st){if(st.value)emp.start=st.value;else delete emp.start;}
     if(isNew)employees.push(emp);
     else employees=employees.map(function(e){return e.id===emp.id?emp:e;});
     base[emp.id]=pick.days.sort(function(a,b){return a-b;});
@@ -1200,6 +1211,8 @@ function openEmpSheet(empId){
   });
   var ms=sc.querySelector('#mgrSueldo');
   if(ms)ms.addEventListener('click',function(){openSalarySheet(emp.id);});
+  var mr=sc.querySelector('#mgrRole');
+  if(mr)mr.addEventListener('click',function(){openRoleSheet(emp.id);});
   var bj=sc.querySelector('#bajaEmp');
   if(bj)bj.addEventListener('click',function(){openBajaSheet(emp.id);});
   var del=sc.querySelector('#delEmp');
@@ -1358,6 +1371,7 @@ function netPay(emp,mon){return Math.max(0,basePay(emp,mon)+extraPay(emp,mon)-de
 function fmtMoney(n){var v=Math.round((n||0)*100)/100;return '$'+v.toLocaleString('es-MX',{minimumFractionDigits:0,maximumFractionDigits:2});}
 
 function renderNomina(){
+  applyRolesForWeek(state.week);
   var host=document.getElementById('nominaContent');host.innerHTML='';
   // week strip
   var nav=el('<div class="nomweek"><button class="nav" id="nomPrev">‹</button><div class="nl"><div class="rg">'+fmtRange(state.week)+'</div><div class="sb">Nómina semanal</div></div><button class="nav" id="nomNext">›</button><button class="nomtoday" id="nomToday">Hoy</button></div>');
@@ -1675,6 +1689,50 @@ function printDoc(inner,portrait){
   document.body.appendChild(f);
 }
 
+function openRoleSheet(empId){
+  var emp=byId(empId);if(!emp)return;
+  function weekOpts(sel){var out='';for(var i=-2;i<10;i++){var m=addDays(startOfWeek(new Date()),7*i);var k=weekKey(m);
+    out+='<option value="'+k+'"'+(sel===k?' selected':'')+'>'+esc((i===0?'Esta semana · ':i===1?'Próxima · ':'')+fmtRange(m))+'</option>';}return out;}
+  function roleTxt(r){return (r.shift==='AM'?'Mañana':'Tarde')+' · '+AREAS[r.area].short+(r.mgr?' · Encargado':'');}
+  function paint(){
+    var b=empBase0(emp);
+    var hist=(emp.roleHist||[]).slice().sort(function(a,c){return a.from<c.from?-1:1;});
+    var rows='<div class="liitem"><span>Inicial</span><span class="m" style="color:inherit">'+esc(roleTxt(b))+'</span></div>'+
+      hist.map(function(x){return '<div class="liitem"><span>Desde '+esc(wkLabel(x.from))+'</span><span class="m" style="color:inherit">'+esc(roleTxt({shift:x.shift||b.shift,area:x.area||b.area,mgr:('mgr' in x)?x.mgr:b.mgr}))+'</span><button class="rm" data-del="'+x.from+'">×</button></div>';}).join('');
+    var cur=empRoleAt(emp,state.week);
+    sc.innerHTML=
+      '<div class="shead"><div class="t">Turno / área · '+esc(emp.name)+'</div><div class="s">Ahora: '+esc(roleTxt(cur))+'</div></div>'+
+      '<div class="sbody">'+
+        '<div class="fgroup"><label>Historial</label><div class="lilist">'+rows+'</div></div>'+
+        '<div class="fgroup"><label>Nuevo puesto desde una semana</label>'+
+          '<select class="field" id="rWeek" style="margin-bottom:6px">'+weekOpts(weekKey(addDays(startOfWeek(new Date()),7)))+'</select>'+
+          '<div class="daychips" id="rShift" style="margin-bottom:4px"><button data-s="AM" class="'+(cur.shift==='AM'?'on':'')+'">Mañana</button><button data-s="PM" class="'+(cur.shift==='PM'?'on':'')+'">Tarde</button></div>'+
+          '<div class="daychips" id="rArea" style="margin-bottom:4px">'+AREA_ORDER.map(function(a){return '<button data-ar="'+a+'" class="'+(cur.area===a?'on':'')+'">'+AREAS[a].short+'</button>';}).join('')+'</div>'+
+          '<div class="daychips" id="rMgr"><button data-m="0" class="'+(cur.mgr?'':'on')+'">No encargado</button><button data-m="1" class="'+(cur.mgr?'on':'')+'">Encargado</button></div>'+
+          '<button class="btn primary wide" id="rAdd" style="margin-top:8px">Aplicar cambio</button>'+
+        '</div>'+
+        '<div class="hint">El cambio aplica solo desde la semana elegida en adelante. Las semanas anteriores no cambian.</div>'+
+      '</div>';
+    var pk={shift:cur.shift,area:cur.area,mgr:cur.mgr};
+    sc.querySelectorAll('#rShift button').forEach(function(x){x.addEventListener('click',function(){pk.shift=x.getAttribute('data-s');sc.querySelectorAll('#rShift button').forEach(function(y){y.classList.remove('on');});x.classList.add('on');});});
+    sc.querySelectorAll('#rArea button').forEach(function(x){x.addEventListener('click',function(){pk.area=x.getAttribute('data-ar');sc.querySelectorAll('#rArea button').forEach(function(y){y.classList.remove('on');});x.classList.add('on');});});
+    sc.querySelectorAll('#rMgr button').forEach(function(x){x.addEventListener('click',function(){pk.mgr=x.getAttribute('data-m')==='1';sc.querySelectorAll('#rMgr button').forEach(function(y){y.classList.remove('on');});x.classList.add('on');});});
+    sc.querySelector('#rAdd').addEventListener('click',function(){
+      var from=sc.querySelector('#rWeek').value;
+      if(!emp.roleHist)emp.roleHist=[];
+      emp.roleHist=emp.roleHist.filter(function(x){return x.from!==from;});
+      emp.roleHist.push({from:from,shift:pk.shift,area:pk.area,mgr:pk.mgr});
+      employees=employees.map(function(e){return e.id===emp.id?emp:e;});
+      applyRolesForWeek(state.week);save();paint();renderCalendar();toast('Cambio aplicado desde '+wkLabel(from));
+    });
+    sc.querySelectorAll('[data-del]').forEach(function(b){b.addEventListener('click',function(){
+      if(!confirm('¿Quitar este cambio de puesto?'))return;
+      var from=b.getAttribute('data-del');emp.roleHist=(emp.roleHist||[]).filter(function(x){return x.from!==from;});
+      employees=employees.map(function(e){return e.id===emp.id?emp:e;});applyRolesForWeek(state.week);save();paint();renderCalendar();toast('Eliminado');
+    });});
+  }
+  openSheet('<div class="sbody"></div>');paint();
+}
 function openSalarySheet(empId){
   var emp=byId(empId);if(!emp)return;
   function tlabel(t){return t==='diario'?'/día':t==='semanal'?'/sem':'/h';}
@@ -1907,49 +1965,65 @@ function repeatRolWeeks(mon,n){copyRol(mon);for(var i=1;i<=n;i++)pasteRolInto(ad
 /* ---------- rol automático ---------- */
 function ruleAttrs(){return (cfg.attrs||[]).filter(function(a){return a.rule;});}
 function generateAuto(mon,conds){
+  applyRolesForWeek(mon);
   var key=weekKey(mon),ros=roster(mon),warns=[];
-  var only={},frest={},ovr={};
+  var only={},frest={},ovr={},covers=[];
   (conds||[]).forEach(function(c){
     if(c.type==='only')only[c.empId]=(c.days||[]).slice();
     else if(c.type==='rest')frest[c.empId]=(frest[c.empId]||[]).concat(c.days||[]);
     else if(c.type==='shiftarea')ovr[c.empId]={shift:c.shift,area:c.area};
+    else if(c.type==='cover'){var ce=byId(c.empId);if(ce)covers.push({empId:c.empId,area:ce.area,days:(c.days||[]).slice()});}
   });
+  var isCoverDay={}; // empId -> {day:true}
+  covers.forEach(function(cv){isCoverDay[cv.empId]=isCoverDay[cv.empId]||{};cv.days.forEach(function(d){isCoverDay[cv.empId][d]=cv.area;});});
   var A={};
-  ros.forEach(function(e){A[e.id]=[];for(var d=0;d<7;d++){A[e.id][d]={st:'work',shift:(ovr[e.id]&&ovr[e.id].shift)||e.shift,area:(ovr[e.id]&&ovr[e.id].area)||e.area,forced:false};}});
-  ros.forEach(function(e){if(only[e.id]){for(var d=0;d<7;d++){var on=only[e.id].indexOf(d)>=0;A[e.id][d].st=on?'work':'rest';A[e.id][d].forced=true;}}});
-  ros.forEach(function(e){(frest[e.id]||[]).forEach(function(d){if(A[e.id][d]){A[e.id][d].st='rest';A[e.id][d].forced=true;}});});
-  function crew(area,shift,d){var n=0;ros.forEach(function(e){var a=A[e.id][d];if(a.st==='work'&&a.area===area&&a.shift===shift)n++;});return n;}
+  ros.forEach(function(e){A[e.id]=[];for(var d=0;d<7;d++){A[e.id][d]={st:'work',shift:(ovr[e.id]&&ovr[e.id].shift)||e.shift,area:(ovr[e.id]&&ovr[e.id].area)||e.area,forced:false,float:false,placed:true};}});
+  // cubreturnos: en sus días son flotantes del área (no cuentan hasta colocarse)
+  ros.forEach(function(e){var cd=isCoverDay[e.id];if(cd){for(var d=0;d<7;d++){if(cd[d]!=null&&!isClosed(mon,d)){A[e.id][d]={st:'work',shift:e.shift,area:cd[d],forced:true,float:true,placed:false};}}}});
+  ros.forEach(function(e){if(only[e.id]){for(var d=0;d<7;d++){var on=only[e.id].indexOf(d)>=0;A[e.id][d].st=on?'work':'rest';A[e.id][d].forced=true;A[e.id][d].float=false;A[e.id][d].placed=true;}}});
+  ros.forEach(function(e){(frest[e.id]||[]).forEach(function(d){if(A[e.id][d]){A[e.id][d].st='rest';A[e.id][d].forced=true;A[e.id][d].float=false;A[e.id][d].placed=true;}});});
+  function crew(area,shift,d){var n=0;ros.forEach(function(e){var a=A[e.id][d];if(a.st==='work'&&a.area===area&&a.shift===shift&&(!a.float||a.placed))n++;});return n;}
+  function availCover(area,d){var f=null;ros.forEach(function(e){var a=A[e.id][d];if(!f&&a.st==='work'&&a.float&&!a.placed&&a.area===area)f=e;});return f;}
   function tierRest(e,d){
     if(isClosed(mon,d))return -1;
     var a=A[e.id][d];if(a.st!=='work'||a.forced)return -1;
-    if(crew(a.area,a.shift,d)-1<MIN_CREW[a.area])return -1;
+    if(crew(a.area,a.shift,d)-1<MIN_CREW[a.area]){
+      var cov=availCover(a.area,d);if(!cov)return -1; // salvo que un cubreturnos pueda entrar
+    }
     var breaksDilig=false;
     ruleAttrs().forEach(function(at){if(e.attrs&&e.attrs.indexOf(at.id)>=0){
-      var others=ros.some(function(x){return x.id!==e.id&&A[x.id][d].st==='work'&&A[x.id][d].shift===a.shift&&x.attrs&&x.attrs.indexOf(at.id)>=0;});
+      var others=ros.some(function(x){return x.id!==e.id&&A[x.id][d].st==='work'&&(!A[x.id][d].float||A[x.id][d].placed)&&A[x.id][d].shift===a.shift&&x.attrs&&x.attrs.indexOf(at.id)>=0;});
       if(!others)breaksDilig=true;}});
     var breaksMgr=false;
     if(e.mgr){var mg=ros.filter(function(x){return x.area===e.area&&x.mgr;});if(mg.length>=2){if(!mg.some(function(x){return x.id!==e.id&&A[x.id][d].st==='work';}))breaksMgr=true;}}
     if(breaksDilig)return 2;if(breaksMgr)return 1;return 0;
   }
+  function doRest(e,d){ // coloca descanso y usa cubreturnos si hace falta
+    var a=A[e.id][d];
+    if(crew(a.area,a.shift,d)-1<MIN_CREW[a.area]){var cov=availCover(a.area,d);if(cov){A[cov.id][d].shift=a.shift;A[cov.id][d].placed=true;}}
+    a.st='rest';
+  }
   var restsPerDay=[0,0,0,0,0,0,0];
   ros.forEach(function(e){for(var d=0;d<7;d++)if(A[e.id][d].st==='rest')restsPerDay[d]++;});
-  var order=ros.filter(function(e){return !only[e.id];}).sort(function(a,b){return (a.mgr?1:0)-(b.mgr?1:0);});
+  var order=ros.filter(function(e){return !only[e.id]&&!isCoverDay[e.id];}).sort(function(a,b){return (a.mgr?1:0)-(b.mgr?1:0);});
   order.forEach(function(e){
     var have=0;for(var d=0;d<7;d++)if(A[e.id][d].st==='rest'||isClosed(mon,d))have++;
     var need=Math.max(0,restDaysFor(e)-have);
     for(var n=0;n<need;n++){
       var cands=[];for(var d=0;d<4;d++){var t=tierRest(e,d);if(t>=0)cands.push({d:d,t:t});}
-      var ok=cands.filter(function(c){return c.t<=1;}); // 0=todo ok, 1=rompe encargado (permitido)
+      var ok=cands.filter(function(c){return c.t<=1;});
       if(!ok.length){
         if(cands.length)warns.push('No pude dar descanso a '+e.name.split(' ')[0]+' sin dejar un turno sin diligenciero.');
         else warns.push('No pude dar descanso a '+e.name.split(' ')[0]+' sin dejar la cuadrilla incompleta.');
         break;
       }
       ok.sort(function(x,y){return x.t-y.t||restsPerDay[x.d]-restsPerDay[y.d];});
-      var pk=ok[0];A[e.id][pk.d].st='rest';restsPerDay[pk.d]++;
+      var pk=ok[0];doRest(e,pk.d);restsPerDay[pk.d]++;
       if(pk.t===1)warns.push('El descanso de '+e.name.split(' ')[0]+' deja su área sin encargado ese día.');
     }
   });
+  // cubreturnos no usados ese día: colócalos en el turno más flojo de su área
+  ros.forEach(function(e){var cd=isCoverDay[e.id];if(!cd)return;for(var d=0;d<7;d++){var a=A[e.id][d];if(a&&a.float&&!a.placed){var am=crew(a.area,'AM',d),pm=crew(a.area,'PM',d);a.shift=(am<=pm)?'AM':'PM';a.placed=true;}}});
   var out={};
   ros.forEach(function(e){
     var o={},has=false;
@@ -1972,6 +2046,7 @@ function openAutoSheet(){
   function condLabel(c){var e=byId(c.empId);var nm=e?e.name.split(' ')[0]:'?';
     if(c.type==='only')return nm+': solo '+(c.days||[]).map(function(d){return WD[d];}).join(',');
     if(c.type==='rest')return nm+': descansa '+(c.days||[]).map(function(d){return WD[d];}).join(',');
+    if(c.type==='cover'){var ce=byId(c.empId);return nm+': cubreturnos '+(ce?AREAS[ce.area].short:'')+' ('+(c.days||[]).map(function(d){return WD[d];}).join(',')+')';}
     return nm+': '+(c.shift==='AM'?'Mañana':'Tarde')+' · '+AREAS[c.area].short;}
   function paint(){
     var empOpts=ros.slice().sort(function(a,b){return a.name.localeCompare(b.name);}).map(function(e){return '<option value="'+e.id+'">'+esc(e.name)+'</option>';}).join('');
@@ -1983,10 +2058,11 @@ function openAutoSheet(){
         '<div class="fgroup"><label>Condiciones de esta semana</label><div class="lilist">'+condHtml+'</div></div>'+
         '<div class="fgroup"><label>Agregar condición</label>'+
           '<select class="field sm" id="acEmp" style="margin-bottom:6px">'+empOpts+'</select>'+
-          '<div class="segm" id="acType" style="margin-bottom:6px">'+
-            '<button data-v="only" class="on">Solo estos días</button><button data-v="rest">Forzar descanso</button><button data-v="shiftarea">Turno/área</button>'+
+          '<div class="segm segm4" id="acType" style="margin-bottom:6px">'+
+            '<button data-v="only" class="on">Solo días</button><button data-v="rest">Descanso</button><button data-v="shiftarea">Turno/área</button><button data-v="cover">Cubreturnos</button>'+
           '</div>'+
           '<div id="acDays" class="daychips">'+WD.map(function(l,i){return '<button data-d="'+i+'">'+l+'</button>';}).join('')+'</div>'+
+          '<div id="acCoverArea" class="hint" style="display:none;margin-top:4px">Cubre los descansos de <b>su propia área</b> en esos días.</div>'+
           '<div id="acSA" style="display:none">'+
             '<div class="daychips" id="acShift"><button data-s="AM">Mañana</button><button data-s="PM">Tarde</button></div>'+
             '<div class="daychips" id="acArea" style="margin-top:4px">'+AREA_ORDER.map(function(a){return '<button data-ar="'+a+'">'+AREAS[a].short+'</button>';}).join('')+'</div>'+
@@ -1995,8 +2071,12 @@ function openAutoSheet(){
         '</div>'+
         '<div class="sheetfoot"><button class="btn primary" id="acGo">Generar propuesta</button></div>'+
       '</div>';
-    var sel={type:'only',days:[],shift:'AM',area:AREA_ORDER[0]};
-    function syncType(){sc.querySelector('#acDays').style.display=(sel.type==='shiftarea')?'none':'flex';sc.querySelector('#acSA').style.display=(sel.type==='shiftarea')?'block':'none';}
+    var sel={type:'only',days:[],shift:'AM',area:AREA_ORDER[0],covArea:AREA_ORDER[0]};
+    function syncType(){
+      sc.querySelector('#acDays').style.display=(sel.type==='shiftarea')?'none':'flex';
+      sc.querySelector('#acSA').style.display=(sel.type==='shiftarea')?'block':'none';
+      sc.querySelector('#acCoverArea').style.display=(sel.type==='cover')?'block':'none';
+    }
     sc.querySelectorAll('#acType button').forEach(function(b){b.addEventListener('click',function(){sel.type=b.getAttribute('data-v');sc.querySelectorAll('#acType button').forEach(function(x){x.classList.remove('on');});b.classList.add('on');syncType();});});
     sc.querySelectorAll('#acDays button').forEach(function(b){b.addEventListener('click',function(){var d=+b.getAttribute('data-d'),i=sel.days.indexOf(d);if(i>-1){sel.days.splice(i,1);b.classList.remove('on');}else{sel.days.push(d);b.classList.add('on');}});});
     sc.querySelectorAll('#acShift button').forEach(function(b){b.addEventListener('click',function(){sel.shift=b.getAttribute('data-s');sc.querySelectorAll('#acShift button').forEach(function(x){x.classList.remove('on');});b.classList.add('on');});});
@@ -2004,6 +2084,7 @@ function openAutoSheet(){
     sc.querySelector('#acAdd').addEventListener('click',function(){
       var empId=sc.querySelector('#acEmp').value;
       if(sel.type==='shiftarea')conds.push({empId:empId,type:'shiftarea',shift:sel.shift,area:sel.area});
+      else if(sel.type==='cover'){if(!sel.days.length){toast('Elige los días');return;}conds.push({empId:empId,type:'cover',days:sel.days.slice()});}
       else{if(!sel.days.length){toast('Elige días');return;}conds.push({empId:empId,type:sel.type,days:sel.days.slice()});}
       paint();
     });
