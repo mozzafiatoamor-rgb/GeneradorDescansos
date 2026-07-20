@@ -142,7 +142,7 @@ h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em}
 .xtbadge{display:inline-block;background:#E4F1EE;color:#186B62;border:1px solid #BFE0DA;font-size:8px;font-weight:800;padding:1px 4px;border-radius:99px;margin-top:2px;line-height:1.3;white-space:nowrap}.erow .xtbadge{font-size:10px;margin:0 6px 0 0;padding:2px 8px}.cell.extra{background:#E4F1EE;color:#186B62}.cell.extra .tag{font-weight:800}.statetag.extra{background:#E4F1EE;color:#186B62}
 .ngrid{display:grid;grid-template-columns:58px repeat(7,minmax(0,1fr));gap:2px}.ngrid .acell{display:flex;align-items:center;font-size:10.5px;font-weight:800;color:#5a5346;background:#F6F3EC;border-radius:8px;padding:6px 4px;line-height:1.2}.ncell{background:#fff;border:1px solid #EEE9DE;border-radius:8px;padding:4px 3px;min-height:46px}.ncell.closed{background:#ECEAE4}.nline{font-size:10.5px;font-weight:700;color:#3D2B1A;line-height:1.25;margin-bottom:3px;word-break:break-word}.nline.xo{color:#186B62}.nnote{display:block;font-size:8.5px;font-weight:700;color:#8a8275;background:#F3F0E8;border-radius:4px;padding:0 3px;margin-top:1px}.nline.xo .nnote{background:#E4F1EE;color:#186B62}.nnote.task{background:#F6E7C9;color:#8A5A12}.ndim{font-size:10px;color:#C3BDB1}
 .trow{display:flex;gap:8px}.scol{flex:1;text-align:center;background:#fff;border:1px solid #E7E1D5;border-radius:12px;padding:8px 4px}.scol .scl{font-size:11px;font-weight:700;color:#5a5346;margin-bottom:5px}.scol .scs{font-size:9.5px;color:#8a8275;margin-top:4px;line-height:1.2}.scol .scamt{font-size:11px;font-weight:700;color:#9A331C;margin-top:2px;min-height:14px}.stepper.sm{display:flex;align-items:center;justify-content:center;gap:8px}.stepper.sm .st{width:30px;height:30px}.stepper.sm span{min-width:18px;text-align:center;font-weight:800}
-.trow2{display:flex;gap:8px}.hcol{flex:1;background:#fff;border:1px solid #E7E1D5;border-radius:12px;padding:8px;text-align:center}.hcol .scl{font-size:11px;font-weight:700;color:#5a5346;margin-bottom:6px}.hcol .minnum{width:100%;text-align:center}.hcol .scamt{font-size:11px;font-weight:700;color:#9A331C;margin-top:4px;min-height:14px}.hcol .scamt.pos{color:#1E7D74}
+.trow2{display:flex;gap:8px}.hcol{flex:1;background:#fff;border:1px solid #E7E1D5;border-radius:12px;padding:8px;text-align:center}.hcol .scl{font-size:11px;font-weight:700;color:#5a5346;margin-bottom:6px}.hcol .minnum{width:100%;text-align:center}.hcol .scamt{font-size:11px;font-weight:700;color:#9A331C;margin-top:4px;min-height:14px}.hcol .scamt.pos{color:#1E7D74}.miniimg{border:0;background:#F0E9DC;border-radius:8px;font-size:15px;padding:2px 7px;margin-left:6px;vertical-align:middle;cursor:pointer}
 .loanhist{margin:8px 0;border-top:1px dashed #E0D9CB;padding-top:6px}.loanhist .lhh{font-size:11px;font-weight:700;color:#5a5346;margin-bottom:4px}.lpitem{display:flex;align-items:center;gap:8px;font-size:12px;padding:3px 0}.lpitem .lpw{flex:1;color:#5a5346}.lpitem .lpm{font-weight:700;font-variant-numeric:tabular-nums}.lpedit{border:0;background:none;color:#186B62;font-size:13px;padding:2px 4px}.lpitem .rm{border:0;background:none;color:#9A331C;font-size:15px;padding:0 4px}.lptot{font-size:11.5px;color:#5a5346;margin-top:5px;border-top:1px solid #EEE9DE;padding-top:5px}.lptot b{color:#1E7D74}.linkbtn.sm{font-size:10px;padding:2px 0;margin-top:2px;color:#186B62;background:none;border:0;text-decoration:underline}.hcol .scs{font-size:9.5px;color:#8a8275;margin-top:3px}.paidtoggle{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:12px 14px;background:#F1F7F2;border:1px solid #CFE6D4;border-radius:12px;font-weight:700;color:#1f6b46}.paidtag{display:inline-block;background:#1E7D74;color:#fff;font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle}.nomrow.paid{background:#F4FAF5}.paidcount{font-size:12.5px;color:#5a5346;margin-top:6px}.paidcount b{color:#1E7D74}
 .bakstatus{font-size:12px;font-weight:600;padding:9px 11px;border-radius:10px;margin-bottom:10px;line-height:1.35}.bakstatus.ok{background:#EEF7F0;color:#1f6b46;border:1px solid #CFE6D4}.bakstatus.warn{background:#FDF3E7;color:#8a5a12;border:1px solid #F0DDBB}.bakstatus.bad{background:#FCEDEA;color:#9A331C;border:1px solid #F0C9BE}
 .btn.wide{display:block;width:100%;text-align:center;margin-bottom:8px}.btn[disabled]{opacity:.5;pointer-events:none}.divider{height:1px;background:var(--line,#E7E1D5);margin:6px 0 12px}
@@ -1446,7 +1446,7 @@ function openPayrollSheet(empId){
       : '<button class="mini add" id="addLoan">+ Agregar préstamo</button>';
 
     sc.innerHTML=
-      '<div class="shead"><div class="t">'+esc(emp.name)+(emp.mgr?' ★':'')+'</div><div class="s">'+AREAS[emp.area].short+' · '+SHIFTS[emp.shift].label+' · '+fmtRange(state.week)+'</div></div>'+
+      '<div class="shead"><div class="t">'+esc(emp.name)+(emp.mgr?' ★':'')+' <button id="payImg" class="miniimg" title="Imagen para enviar">📸</button></div><div class="s">'+AREAS[emp.area].short+' · '+SHIFTS[emp.shift].label+' · '+fmtRange(state.week)+'</div></div>'+
       '<div class="sbody">'+
         (r>0?'':'<div class="warnmini">Este empleado no tiene sueldo configurado. <b id="goPay">Configúralo aquí</b>.</div>')+
         '<div class="payblock"><div class="pbl">Pago base</div><div class="pbv">'+baseLine+'</div><div class="pbtot">'+fmtMoney(bp())+'</div></div>'+
@@ -1477,6 +1477,7 @@ function openPayrollSheet(empId){
     sc.querySelectorAll('.st[data-dec]').forEach(function(b){b.addEventListener('click',function(){var k=keymap[b.getAttribute('data-dec')];entry[k]=Math.max(0,(entry[k]||0)-1);paint();});});
     sc.querySelector('#otAdd').addEventListener('click',function(){var m=parseFloat(sc.querySelector('#otMonto').value)||0;if(m<=0){toast('Pon el monto');return;}entry.otros.push({m:m,c:sc.querySelector('#otConc').value.trim()});paint();});
     sc.querySelectorAll('.rm[data-ot]').forEach(function(b){b.addEventListener('click',function(){entry.otros.splice(parseInt(b.getAttribute('data-ot'),10),1);paint();});});
+    var pimg=sc.querySelector('#payImg');if(pimg)pimg.addEventListener('click',function(){entry.faltas=entry.faltas||0;save();toast('Generando imagen…');drawEmployeePayImage(emp.id,function(cv){shareCanvas(cv,'nomina-'+emp.name.split(' ')[0]+'-'+iso(state.week)+'.png','Nómina '+emp.name.split(' ')[0]);});});
     var pp=sc.querySelector('#pPaid');if(pp)pp.addEventListener('change',function(){entry.paid=this.checked;});
     var peh=sc.querySelector('#pExtraH');if(peh)peh.addEventListener('input',function(){entry.extraHrs=this.value===''?0:Math.max(0,parseFloat(this.value)||0);entry.extraManual=true;var a=sc.querySelector('#extraAmt');if(a)a.textContent=extra()>0?'+'+fmtMoney(extra()):'';refreshNet();});
     var xa=sc.querySelector('#xtAuto');if(xa)xa.addEventListener('click',function(){delete entry.extraManual;entry.extraHrs=calExtraHours(empId,state.week);paint();});
@@ -1597,22 +1598,24 @@ function buildPayrollPrint(f){
   var pa=document.getElementById('print-area');
   var html=printHeader('Nómina semanal');
   html+='<div class="psub">Semana '+fmtRange(state.week)+' · '+esc(payrollScopeLabel(f))+'</div>';
-  html+='<table class="paytbl"><thead><tr><th class="nm">Empleado</th><th>Tipo</th><th>Base</th><th>Faltas</th><th>F. injust.</th><th>Retardos</th><th>Préstamo</th><th>Otros</th><th>Neto</th><th>Pagado</th></tr></thead><tbody>';
+  html+='<table class="paytbl"><thead><tr><th class="nm">Empleado</th><th>Tipo</th><th>Base</th><th>Extras</th><th>Faltas</th><th>F. injust.</th><th>Retardos</th><th>H. no trab.</th><th>Préstamo</th><th>Otros</th><th>Neto</th><th>Pagado</th></tr></thead><tbody>';
   var grand=0,list=payrollEmps(f);
   AREA_ORDER.forEach(function(area){
     var emps=list.filter(function(e){return e.area===area;}).sort(function(a,b){return (a.shift>b.shift?1:-1)||(b.mgr?1:0)-(a.mgr?1:0);});
     if(!emps.length)return;
-    html+='<tr class="grouprow"><td colspan="10">'+AREAS[area].short+'</td></tr>';
+    html+='<tr class="grouprow"><td colspan="12">'+AREAS[area].short+'</td></tr>';
     var at=0;
     emps.forEach(function(e){
-      var d=deductions(e,state.week),b=basePay(e,state.week),n=netPay(e,state.week);at+=n;grand+=n;
+      var d=deductions(e,state.week),b=basePay(e,state.week),ex=extraPay(e,state.week),n=netPay(e,state.week);at+=n;grand+=n;
       var tipo=payType(e)==='diario'?'Diario':payType(e)==='semanal'?'Semanal':'Hora';
       html+='<tr><td class="nm">'+esc(e.name)+(e.mgr?' ★':'')+'</td><td>'+tipo+'</td><td>'+fmtMoney(b)+'</td>'+
+        '<td>'+(ex?'+'+fmtMoney(ex):'—')+'</td>'+
         '<td>'+(d.falta?'-'+fmtMoney(d.falta):'—')+'</td><td>'+(d.faltaInj?'-'+fmtMoney(d.faltaInj):'—')+'</td><td>'+(d.retardo?'-'+fmtMoney(d.retardo):'—')+'</td>'+
+        '<td>'+(d.menosHrs?'-'+fmtMoney(d.menosHrs):'—')+'</td>'+
         '<td>'+(d.abono?'-'+fmtMoney(d.abono):'—')+'</td><td>'+(d.otro?'-'+fmtMoney(d.otro):'—')+'</td>'+
         '<td class="net"><b>'+fmtMoney(n)+'</b></td><td>'+(isPaid(e,state.week)?'✓':'')+'</td></tr>';
     });
-    html+='<tr class="subrow"><td class="nm" colspan="8">Subtotal '+AREAS[area].short+'</td><td><b>'+fmtMoney(at)+'</b></td><td></td></tr>';
+    html+='<tr class="subrow"><td class="nm" colspan="10">Subtotal '+AREAS[area].short+'</td><td><b>'+fmtMoney(at)+'</b></td><td></td></tr>';
   });
   html+='</tbody></table>';
   html+='<div class="paytotal">Total: <b>'+fmtMoney(grand)+'</b></div>';
@@ -2026,11 +2029,12 @@ function drawNombresImage(cb){
     cb(cv);
   });
 }
-function shareCanvas(cv){
+function shareCanvas(cv,fname,title){
+  fname=fname||('rol-'+iso(state.week)+'.png');title=title||('Rol '+fmtRange(state.week));
   cv.toBlob(function(blob){
     if(!blob){toast('No se pudo generar la imagen');return;}
-    var fname='rol-'+iso(state.week)+'.png',file=new File([blob],fname,{type:'image/png'});
-    if(navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:'Rol semanal',text:'Rol '+fmtRange(state.week)}).catch(function(){});}
+    var file=new File([blob],fname,{type:'image/png'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:title,text:title}).catch(function(){});}
     else{var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},2000);toast('Imagen descargada');}
   },'image/png');
 }
@@ -2039,6 +2043,68 @@ document.getElementById('imgBtn').addEventListener('click',function(){
   if(state.view==='nombres')drawNombresImage(shareCanvas);
   else drawWeekImage(shareCanvas);
 });
+
+function drawEmployeePayImage(empId,cb){
+  var e=byId(empId);if(!e)return;
+  applyRolesForWeek(state.week);
+  var mon=state.week,ent=payEntry(empId,mon)||{},t=payType(e,mon),r=payRate(e,mon);
+  var b=basePay(e,mon),ex=extraPay(e,mon),d=deductions(e,mon),n=netPay(e,mon),vh=valorDia(e,mon)/8;
+  var items=[];
+  if(t==='hora'){var hh=(ent.horas!=null)?ent.horas:workedHours(empId,mon);items.push(['Horas ('+hh+' × '+fmtMoney(r)+')',fmtMoney(b),0]);}
+  else{var dd=(ent.dias!=null)?ent.dias:workedDays(empId,mon);items.push(['Días ('+dd+' × '+fmtMoney(t==='semanal'?r/6:r)+')',fmtMoney(b),0]);}
+  if(ex)items.push(['Horas extra ('+extraHoursOf(e,mon)+'h × '+fmtMoney(vh)+')','+'+fmtMoney(ex),1]);
+  if(d.menosHrs)items.push(['Horas no trabajadas ('+(ent.menosHrs||0)+'h × '+fmtMoney(vh)+')','-'+fmtMoney(d.menosHrs),-1]);
+  if(d.falta)items.push(['Faltas ('+(ent.faltas||0)+')','-'+fmtMoney(d.falta),-1]);
+  if(d.faltaInj)items.push(['Faltas injustificadas ('+(ent.faltasInj||0)+', doble)','-'+fmtMoney(d.faltaInj),-1]);
+  if(d.retardo)items.push(['Retardos ('+d.retN+' × $50)','-'+fmtMoney(d.retardo),-1]);
+  if(d.abono)items.push(['Abono a préstamo','-'+fmtMoney(d.abono),-1]);
+  (ent.otros||[]).forEach(function(o){if(o.m)items.push(['Otro: '+(o.c||'—'),'-'+fmtMoney(o.m),-1]);});
+  var scale=3,W=900,pad=44,rowH=52,headH=150,netH=90;
+  var H=pad+headH+items.length*rowH+netH+pad+30;
+  var cv=document.createElement('canvas');cv.width=W*scale;cv.height=H*scale;
+  var x=cv.getContext('2d');x.scale(scale,scale);
+  x.fillStyle='#F0E9DC';x.fillRect(0,0,W,H);
+  function rr(px,py,pw,ph,rad){x.beginPath();x.moveTo(px+rad,py);x.arcTo(px+pw,py,px+pw,py+ph,rad);x.arcTo(px+pw,py+ph,px,py+ph,rad);x.arcTo(px,py+ph,px,py,rad);x.arcTo(px,py,px+pw,py,rad);x.closePath();}
+  withLogo(function(){
+    // tarjeta
+    x.fillStyle='#fff';rr(pad,pad,W-pad*2,H-pad*2,18);x.fill();
+    var ix=pad+28,iw=W-pad*2-56,y=pad+34;
+    // header
+    x.fillStyle='#16181D';rr(ix,y,120,54,12);x.fill();
+    if(window._logoImg&&window._logoImg.complete&&window._logoImg.naturalWidth){try{var lw=window._logoImg.naturalWidth,lh=window._logoImg.naturalHeight,ls=Math.min(100/lw,42/lh);x.drawImage(window._logoImg,ix+(120-lw*ls)/2,y+(54-lh*ls)/2,lw*ls,lh*ls);}catch(er){}}
+    else{x.fillStyle='#fff';x.font='700 16px Arial';x.textBaseline='middle';x.fillText('Mozzafiato',ix+12,y+27);}
+    x.textBaseline='alphabetic';x.fillStyle='#3D2B1A';x.font='700 22px Arial';x.fillText('Recibo de nómina',ix+140,y+22);
+    x.fillStyle='#7A6040';x.font='500 15px Arial';x.fillText('Semana '+fmtRange(mon),ix+140,y+44);
+    y+=76;
+    x.fillStyle='#2c2114';x.font='800 24px Arial';x.fillText(e.name+(e.mgr?'  ★':''),ix,y);
+    y+=26;
+    x.fillStyle='#7A6040';x.font='500 15px Arial';
+    x.fillText(AREAS[e.area].short+' · '+(e.shift==='AM'?'Mañana':'Tarde')+' · '+(t==='diario'?'Diario':t==='semanal'?'Semanal':'Por hora')+' '+fmtMoney(r),ix,y);
+    y+=24;
+    x.strokeStyle='#EAE3D5';x.lineWidth=1.5;x.beginPath();x.moveTo(ix,y);x.lineTo(ix+iw,y);x.stroke();
+    y+=10;
+    // items
+    items.forEach(function(it){
+      x.fillStyle='#3D2B1A';x.font='500 16px Arial';x.textBaseline='middle';x.textAlign='left';
+      var lbl=it[0].length>44?it[0].slice(0,43)+'…':it[0];
+      x.fillText(lbl,ix,y+rowH/2);
+      x.textAlign='right';x.font='700 17px Arial';
+      x.fillStyle=it[2]>0?'#1E7D74':it[2]<0?'#9A331C':'#2c2114';
+      x.fillText(it[1],ix+iw,y+rowH/2);
+      x.textAlign='left';
+      x.strokeStyle='#F1ECE1';x.beginPath();x.moveTo(ix,y+rowH);x.lineTo(ix+iw,y+rowH);x.stroke();
+      y+=rowH;
+    });
+    // neto
+    y+=14;
+    x.fillStyle='#16181D';rr(ix,y,iw,64,14);x.fill();
+    x.fillStyle='#EFE7D6';x.font='600 16px Arial';x.textBaseline='middle';x.textAlign='left';x.fillText('NETO A PAGAR',ix+20,y+32);
+    x.fillStyle='#fff';x.font='800 28px Arial';x.textAlign='right';x.fillText(fmtMoney(n),ix+iw-20,y+34);
+    x.textAlign='left';
+    if(isPaid(e,mon)){x.save();x.translate(W-pad-120,pad+118);x.rotate(-0.18);x.strokeStyle='#1E7D74';x.lineWidth=4;rr(-4,-26,150,52,10);x.stroke();x.fillStyle='#1E7D74';x.font='800 30px Arial';x.textAlign='center';x.textBaseline='middle';x.fillText('PAGADO',73,0);x.restore();}
+    cb(cv);
+  });
+}
 
 /* ---------- resumen en texto ---------- */
 function textPersonLine(e,day,turno,area){
