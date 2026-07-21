@@ -1345,7 +1345,7 @@ function loanPaymentsHtml(emp){
   if(!ps.length)return '<div class="hint" style="margin:2px 0">Aún no hay abonos registrados.</div>';
   var tot=ps.reduce(function(a,x){return a+x.amount;},0);
   return ps.map(function(p){return '<div class="lpitem"><span class="lpw">'+esc(wkLabel(p.week))+'</span><span class="lpm">'+fmtMoney(p.amount)+'</span>'+
-    '<button class="lpedit" data-lpe="'+p.week+'">✎</button><button class="rm" data-lpd="'+p.week+'">×</button></div>';}).join('')+
+    '<button class="lpr" data-lpr="'+p.week+'" title="Recibo de este abono">📸</button><button class="lpedit" data-lpe="'+p.week+'">✎</button><button class="rm" data-lpd="'+p.week+'">×</button></div>';}).join('')+
     '<div class="lptot">Pagado: <b>'+fmtMoney(tot)+'</b> · Falta: <b>'+fmtMoney(Math.max(0,(emp.loan.monto||0)-tot))+'</b></div>';
 }
 
@@ -1446,7 +1446,7 @@ function openPayrollSheet(empId){
          '<div class="lrow"><span>Abono esta semana</span><input class="minnum" id="pAbono" type="number" inputmode="decimal" min="0" value="'+(entry.abono!=null?entry.abono:Math.min(emp.loan.abono||0,saldoB()))+'"></div>'+
          '<div class="lrow"><span>Saldo después</span><b>'+fmtMoney(Math.max(0,saldoB()-ab()))+'</b></div>'+
          '<div class="loanhist"><div class="lhh">Pagos registrados</div>'+loanPaymentsHtml(emp)+'</div>'+
-         '<div class="lbtns"><button class="mini" id="editLoan">Editar préstamo</button><button class="mini warn" id="rmLoan">Quitar</button></div></div>')
+         '<div class="lbtns"><button class="mini" id="loanReceipt">📸 Recibo del préstamo</button><button class="mini" id="editLoan">Editar</button><button class="mini warn" id="rmLoan">Quitar</button></div></div>')
       : '<button class="mini add" id="addLoan">+ Agregar préstamo</button>';
 
     sc.innerHTML=
@@ -1489,6 +1489,8 @@ function openPayrollSheet(empId){
     var pa=sc.querySelector('#pAbono');if(pa)pa.addEventListener('input',function(){entry.abono=this.value===''?null:parseFloat(this.value)||0;refreshNet();var after=sc.querySelectorAll('.loanbox .lrow b')[1];if(after)after.textContent=fmtMoney(Math.max(0,saldoB()-ab()));});
     var al=sc.querySelector('#addLoan');if(al)al.addEventListener('click',setLoan);
     var el2=sc.querySelector('#editLoan');if(el2)el2.addEventListener('click',setLoan);
+    var lr=sc.querySelector('#loanReceipt');if(lr)lr.addEventListener('click',function(){toast('Generando recibo…');drawLoanImage(emp.id,'entrega',null,function(cv){shareCanvas(cv,'prestamo-'+emp.name.split(' ')[0]+'.png','Comprobante de préstamo · '+emp.name.split(' ')[0]);});});
+    sc.querySelectorAll('[data-lpr]').forEach(function(b){b.addEventListener('click',function(){var wk=b.getAttribute('data-lpr');toast('Generando recibo…');drawLoanImage(emp.id,'abono',wk,function(cv){shareCanvas(cv,'abono-'+emp.name.split(' ')[0]+'-'+wk+'.png','Comprobante de abono · '+emp.name.split(' ')[0]);});});});
     var rl=sc.querySelector('#rmLoan');if(rl)rl.addEventListener('click',function(){if(confirm('¿Quitar el préstamo de '+emp.name+'?')){delete emp.loan;entry.abono=null;save();paint();}});
     sc.querySelectorAll('[data-lpd]').forEach(function(b){b.addEventListener('click',function(){
       var wk=b.getAttribute('data-lpd');if(!confirm('¿Eliminar el abono de '+wkLabel(wk)+'? El saldo se recalcula.'))return;
@@ -1514,9 +1516,10 @@ function openPayrollSheet(empId){
   }
   function updatePbtot(){var pt=sc.querySelector('.pbtot');if(pt)pt.textContent=fmtMoney(bp());}
   function setLoan(){
-    var m=prompt('Monto total del préstamo ($):',emp.loan?emp.loan.monto:'');if(m===null)return;m=parseFloat(m)||0;
+    var m=prompt('Monto total del préstamo/adelanto ($):',emp.loan?emp.loan.monto:'');if(m===null)return;m=parseFloat(m)||0;
     var a=prompt('Abono por semana ($):',emp.loan?emp.loan.abono:'');if(a===null)return;a=parseFloat(a)||0;
-    if(m<=0){delete emp.loan;}else{emp.loan={monto:m,abono:a};}
+    var mo=prompt('Motivo (ej. adelanto de sueldo, préstamo personal):',(emp.loan&&emp.loan.motivo)?emp.loan.motivo:'Adelanto de sueldo');if(mo===null)return;
+    if(m<=0){delete emp.loan;}else{emp.loan={monto:m,abono:a,motivo:(mo||'').trim()||'Adelanto de sueldo',date:(emp.loan&&emp.loan.date)?emp.loan.date:iso(new Date())};}
     entry.abono=null;save();paint();
   }
   openSheet('');paint();
@@ -2110,6 +2113,56 @@ function drawEmployeePayImage(empId,cb){
     cb(cv);
   });
 }
+
+function niceDate(isoStr){if(!isoStr)return '';var p=isoStr.split('-');if(p.length!==3)return isoStr;var MM=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];return (+p[2])+' '+MM[(+p[1])-1]+' '+p[0];}
+function drawLoanImage(empId,kind,wk,cb){
+  var e=byId(empId);if(!e||!e.loan)return;
+  var monto=e.loan.monto||0,motivo=e.loan.motivo||'Adelanto de sueldo';
+  var pays=loanPayments(e),paidTot=pays.reduce(function(a,p){return a+p.amount;},0);
+  var rows=[],title,bigLabel,bigVal,stamp;
+  if(kind==='abono'){
+    var amt=(payroll[wk]&&payroll[wk][empId])?payroll[wk][empId].abono:0;
+    var upto=pays.filter(function(p){return p.week<=wk;}).reduce(function(a,p){return a+p.amount;},0);
+    title='Comprobante de abono';bigLabel='Abono recibido';bigVal=fmtMoney(amt);stamp='PAGADO';
+    rows=[['Empleado',e.name],['Semana del abono',wkLabel(wk)],['Motivo del préstamo',motivo],['Préstamo total',fmtMoney(monto)],['Saldo restante',fmtMoney(Math.max(0,monto-upto))]];
+  }else{
+    title='Comprobante de préstamo / adelanto';bigLabel='Monto entregado';bigVal=fmtMoney(monto);stamp='ENTREGADO';
+    rows=[['Empleado',e.name],['Fecha de entrega',niceDate(e.loan.date||iso(new Date()))],['Motivo',motivo]];
+    if(e.loan.abono)rows.push(['Abono semanal pactado',fmtMoney(e.loan.abono)]);
+    rows.push(['Saldo actual',fmtMoney(Math.max(0,monto-paidTot))]);
+  }
+  var scale=3,W=900,pad=44,rowH=52,headH=150,bigH=90;
+  var H=pad+headH+rows.length*rowH+bigH+pad+30;
+  var cv=document.createElement('canvas');cv.width=W*scale;cv.height=H*scale;
+  var x=cv.getContext('2d');x.scale(scale,scale);
+  x.fillStyle='#F0E9DC';x.fillRect(0,0,W,H);
+  function rr(px,py,pw,ph,rad){x.beginPath();x.moveTo(px+rad,py);x.arcTo(px+pw,py,px+pw,py+ph,rad);x.arcTo(px+pw,py+ph,px,py+ph,rad);x.arcTo(px,py+ph,px,py,rad);x.arcTo(px,py,px+pw,py,rad);x.closePath();}
+  withLogo(function(){
+    x.fillStyle='#fff';rr(pad,pad,W-pad*2,H-pad*2,18);x.fill();
+    var ix=pad+28,iw=W-pad*2-56,y=pad+34;
+    x.fillStyle='#16181D';rr(ix,y,120,54,12);x.fill();
+    if(window._logoImg&&window._logoImg.complete&&window._logoImg.naturalWidth){try{var lw=window._logoImg.naturalWidth,lh=window._logoImg.naturalHeight,ls=Math.min(100/lw,42/lh);x.drawImage(window._logoImg,ix+(120-lw*ls)/2,y+(54-lh*ls)/2,lw*ls,lh*ls);}catch(er){}}
+    else{x.fillStyle='#fff';x.font='700 16px Arial';x.textBaseline='middle';x.fillText('Mozzafiato',ix+12,y+27);}
+    x.textBaseline='alphabetic';x.fillStyle='#3D2B1A';x.font='700 22px Arial';x.fillText(title,ix+140,y+24);
+    x.fillStyle='#7A6040';x.font='500 15px Arial';x.fillText(((cfg.biz||'').split('-')[0].trim())||'',ix+140,y+46);
+    y+=80;
+    x.strokeStyle='#EAE3D5';x.lineWidth=1.5;x.beginPath();x.moveTo(ix,y);x.lineTo(ix+iw,y);x.stroke();y+=6;
+    rows.forEach(function(it){
+      x.fillStyle='#8a8275';x.font='500 15px Arial';x.textBaseline='middle';x.textAlign='left';x.fillText(it[0],ix,y+rowH/2);
+      x.fillStyle='#2c2114';x.font='700 17px Arial';x.textAlign='right';
+      var v=String(it[1]);if(v.length>34)v=v.slice(0,33)+'…';x.fillText(v,ix+iw,y+rowH/2);
+      x.textAlign='left';x.strokeStyle='#F1ECE1';x.beginPath();x.moveTo(ix,y+rowH);x.lineTo(ix+iw,y+rowH);x.stroke();
+      y+=rowH;
+    });
+    y+=14;
+    x.fillStyle='#16181D';rr(ix,y,iw,64,14);x.fill();
+    x.fillStyle='#EFE7D6';x.font='600 16px Arial';x.textBaseline='middle';x.textAlign='left';x.fillText(bigLabel.toUpperCase(),ix+20,y+32);
+    x.fillStyle='#fff';x.font='800 28px Arial';x.textAlign='right';x.fillText(bigVal,ix+iw-20,y+34);x.textAlign='left';
+    x.save();x.translate(W-pad-118,pad+120);x.rotate(-0.18);x.strokeStyle='#1E7D74';x.lineWidth=4;rr(-8,-26,168,52,10);x.stroke();x.fillStyle='#1E7D74';x.font='800 26px Arial';x.textAlign='center';x.textBaseline='middle';x.fillText(stamp,76,0);x.restore();
+    cb(cv);
+  });
+}
+function niceDateEnd(){}
 
 /* ---------- resumen en texto ---------- */
 function slotHoursText(slot){return {'08-12':'de 8:00 a.m. a 12:00 del mediodía','12-16':'de 12:00 del mediodía a 4:00 p.m.','16-20':'de 4:00 p.m. a 8:00 p.m.','20-24':'de 8:00 p.m. a 12:00 de la noche'}[slot]||'';}
