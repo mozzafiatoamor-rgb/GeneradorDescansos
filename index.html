@@ -2107,50 +2107,72 @@ function drawEmployeePayImage(empId,cb){
 }
 
 /* ---------- resumen en texto ---------- */
-function textPersonLine(e,day,turno,area){
+function slotHoursText(slot){return {'08-12':'de 8:00 a.m. a 12:00 del mediodía','12-16':'de 12:00 del mediodía a 4:00 p.m.','16-20':'de 4:00 p.m. a 8:00 p.m.','20-24':'de 8:00 p.m. a 12:00 de la noche'}[slot]||'';}
+function taskNatural(t){var m={'Compras':'las compras','Banco':'ir al banco','Mandado':'los mandados','Limpieza':'la limpieza a fondo','Inventario':'el inventario'};return m[t]||('la tarea de '+t.toLowerCase());}
+function attrsNatural(e){
+  if(!e.attrs||!e.attrs.length||!cfg.attrs)return '';
+  var names=e.attrs.map(function(id){var a=cfg.attrs.filter(function(x){return x.id===id;})[0];return a?a.name.replace(/\s*\(.*\)/,'').toLowerCase():null;}).filter(Boolean);
+  if(!names.length)return '';
+  var joined=names.length>1?names.slice(0,-1).join(', ')+' y '+names[names.length-1]:names[0];
+  return 'Recuerden que puede apoyar como '+joined+'.';
+}
+function personSentence(e,day){
   var du=effDuty(e,day);
-  var work=(du.area===area&&dutyInTurno(du,turno));
-  var xtra=(du.area===area&&extraInTurno(du,turno));
-  if(!work&&!xtra)return null;
-  var tags=[];
-  if(work){
-    if(du.st==='medio')tags.push(du.am&&du.pm?'medio: mañana y noche':(du.am?'medio turno mañana':'medio turno noche'));
-    else if(du.st==='cortado')tags.push('cortado');
-    if(e.shift!==turno||e.area!==area)tags.push('cambia a este puesto');
-    if(du.xt)tags.push('+'+du.xt.h+'h extra '+du.xt.lbl);
-    if(du.task)tags.push(du.task);
-  }else{tags.push('solo '+du.xt.h+'h extra '+du.xt.lbl);}
-  return e.name+(e.mgr?' (enc.)':'')+(tags.length?' ('+tags.join('; ')+')':'');
+  if(!(du.st==='work'||du.st==='medio'||du.st==='cortado'))return null;
+  var nm='*'+e.name+'*',clause;
+  if(du.st==='work')clause=(du.turno==='AM')?'trabaja en la mañana, de 8:00 a.m. a 4:00 p.m.':'trabaja en la tarde, de 4:00 p.m. a 12:00 de la noche';
+  else if(du.st==='medio')clause=(du.am&&du.pm)?'trabaja dos medios turnos: en la mañana de 8:00 a.m. a 12:00 y en la tarde de 4:00 p.m. a 8:00 p.m.':(du.am?'trabaja medio turno en la mañana, de 8:00 a.m. a 12:00':'trabaja medio turno en la tarde, de 4:00 p.m. a 8:00 p.m.');
+  else clause='trabaja turno cortado: en la mañana de 8:00 a.m. a 12:00 y en la tarde de 4:00 p.m. a 8:00 p.m.';
+  var areaName=AREAS[du.area].short.toLowerCase();
+  var foreign=(du.area!==e.area)||(du.st==='work'&&du.turno!==e.shift);
+  var main=nm+' '+clause+(foreign?', y hoy apoya en '+areaName:', en '+areaName)+'.';
+  var extra=[];
+  if(du.xt)extra.push('Además cubre horas extra, '+slotHoursText(du.xt.slot)+'.');
+  if(e.mgr)extra.push('Queda a cargo del turno.');
+  if(du.task)extra.push('Se encarga de '+taskNatural(du.task)+'.');
+  var at=attrsNatural(e);if(at)extra.push(at);
+  return main+(extra.length?' '+extra.join(' '):'');
+}
+function personExtraOnly(e,day){ // aparece solo por horas extra en el otro turno (ya trabaja su turno normal)
+  return null;
 }
 function buildTextSummary(){
+  applyRolesForWeek(state.week);
   var fl=state.filters;
-  var shifts=(fl.turnos&&fl.turnos.length)?['AM','PM'].filter(function(t){return fl.turnos.indexOf(t)>=0;}):['AM','PM'];
   var areasSel=AREA_ORDER.filter(function(a){return !(fl.areas&&fl.areas.length)||fl.areas.indexOf(a)>=0;});
+  var turnosSel=(fl.turnos&&fl.turnos.length)?fl.turnos.slice():['AM','PM'];
   var list=filteredEmployees();
-  var out='*Rol — Semana '+fmtRange(state.week)+'*\n'+((cfg.biz||'').split('-')[0].trim())+'\n';
+  var biz=((cfg.biz||'').split('-')[0].trim())||'Rol';
+  var out='*Rol de trabajo — '+biz+'*\n_Semana '+fmtRange(state.week)+'_\n';
   var wk=validateWeek(state.week);
-  if(wk.length)out+='\n_Avisos de la semana:_\n'+wk.map(function(w){return '• '+w;}).join('\n')+'\n';
+  if(wk.length)out+='\n_Puntos a cuidar esta semana:_\n'+wk.map(function(w){return '• '+w;}).join('\n')+'\n';
   var WDF=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
   for(var d=0;d<7;d++){
     var date=addDays(state.week,d);
-    out+='\n*'+WDF[d].toUpperCase()+' '+date.getDate()+'*\n';
-    if(isClosed(state.week,d)){out+='_Cerrado por mantenimiento._\n';continue;}
-    shifts.forEach(function(turno){
-      var any=[];
-      areasSel.forEach(function(area){
-        var names=list.filter(function(e){return inGroupWeek(e,turno,area);})
-          .sort(function(a,b){return (b.mgr?1:0)-(a.mgr?1:0)||a.name.localeCompare(b.name);})
-          .map(function(e){return textPersonLine(e,d,turno,area);}).filter(Boolean);
-        if(names.length)any.push('• '+AREAS[area].short+': '+names.join(', '));
-      });
-      if(any.length){out+='_'+(turno==='AM'?'Mañana':'Tarde')+'_\n'+any.join('\n')+'\n';}
+    out+='\n━━━━━━━━━━\n*'+WDF[d].toUpperCase()+' '+date.getDate()+'*\n';
+    if(isClosed(state.week,d)){out+='_Este día permanece cerrado._\n';continue;}
+    var anyArea=false;
+    areasSel.forEach(function(area){
+      var people=list.filter(function(e){
+        var du=effDuty(e,d);
+        if(!(du.st==='work'||du.st==='medio'||du.st==='cortado'))return false;
+        if(du.area!==area)return false;
+        if(turnosSel.length<2){var okT=false;turnosSel.forEach(function(tn){if(presentInTurno(du,tn))okT=true;});if(!okT)return false;}
+        return true;
+      }).sort(function(a,b){return (b.mgr?1:0)-(a.mgr?1:0)||a.name.localeCompare(b.name);});
+      if(!people.length)return;
+      anyArea=true;
+      out+='\n_'+AREAS[area].short+'_\n';
+      people.forEach(function(e){var s=personSentence(e,d);if(s)out+=s+'\n';});
     });
-    var rest=list.filter(function(e){return effStatus(e.id,state.week,d).st==='rest';}).map(function(e){return e.name.split(' ')[0];});
-    if(rest.length)out+='Descansan: '+rest.join(', ')+'\n';
+    if(!anyArea)out+='_Sin personal asignado._\n';
+    var rest=list.filter(function(e){return effStatus(e.id,state.week,d).st==='rest';})
+      .sort(function(a,b){return a.name.localeCompare(b.name);}).map(function(e){return e.name.split(' ')[0];});
+    if(rest.length)out+='\n_Descansan:_ '+rest.join(', ')+'.\n';
     var av=validateDay(state.week,d);
-    if(av.length)out+='Avisos: '+av.join('; ')+'\n';
+    if(av.length)out+='_Atención:_ '+av.join('. ')+'.\n';
   }
-  out+='\n_Generado desde la app._';
+  out+='\n_Cualquier cambio se los aviso. ¡Gracias por su compromiso!_';
   return out;
 }
 function openTextSummary(){
