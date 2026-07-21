@@ -1383,10 +1383,14 @@ function renderNomina(){
   nav.querySelector('#nomToday').addEventListener('click',function(){state.week=startOfWeek(new Date());renderNomina();});
 
   // totals
-  var grand=0,areaT={piso:0,barra:0,cocina:0},paidN=0,totN=0;
-  roster(state.week).forEach(function(e){var n=netPay(e,state.week);grand+=n;areaT[e.area]=(areaT[e.area]||0)+n;if(payRate(e)>0){totN++;if(isPaid(e,state.week))paidN++;}});
+  var grand=0,cash=0,abo=0,areaT={piso:0,barra:0,cocina:0},paidN=0,totN=0;
+  roster(state.week).forEach(function(e){var n=netPay(e,state.week),ab=deductions(e,state.week).abono,cost=n+ab;grand+=cost;cash+=n;abo+=ab;areaT[e.area]=(areaT[e.area]||0)+cost;if(payRate(e)>0){totN++;if(isPaid(e,state.week))paidN++;}});
   var sum=el('<div class="nomsum"></div>');
-  sum.appendChild(el('<div class="nomtotal"><span class="lb">Gasto de nómina · semana</span><span class="vl">'+fmtMoney(grand)+'</span></div>'));
+  sum.appendChild(el('<div class="nomtotal"><span class="lb">Costo de nómina · semana</span><span class="vl">'+fmtMoney(grand)+'</span></div>'));
+  if(abo>0){
+    sum.appendChild(el('<div class="nomtotal sub2"><span class="lb">A pagar en efectivo</span><span class="vl">'+fmtMoney(cash)+'</span></div>'));
+    sum.appendChild(el('<div class="hint" style="margin:2px 0 6px">Incluye '+fmtMoney(abo)+' de abonos a préstamos/adelantos (dinero que ya habías entregado, no es gasto nuevo).</div>'));
+  }
   sum.appendChild(el('<div class="paidcount">Pagados: <b>'+paidN+'</b> de '+totN+'</div>'));
   var areaWrap=el('<div class="nomareas"></div>');
   AREA_ORDER.forEach(function(area){
@@ -1599,14 +1603,14 @@ function buildPayrollPrint(f){
   var html=printHeader('Nómina semanal');
   html+='<div class="psub">Semana '+fmtRange(state.week)+' · '+esc(payrollScopeLabel(f))+'</div>';
   html+='<table class="paytbl"><thead><tr><th class="nm">Empleado</th><th>Tipo</th><th>Base</th><th>Extras</th><th>Faltas</th><th>F. injust.</th><th>Retardos</th><th>H. no trab.</th><th>Préstamo</th><th>Otros</th><th>Neto</th><th>Pagado</th></tr></thead><tbody>';
-  var grand=0,list=payrollEmps(f);
+  var grand=0,gcash=0,gabo=0,list=payrollEmps(f);
   AREA_ORDER.forEach(function(area){
     var emps=list.filter(function(e){return e.area===area;}).sort(function(a,b){return (a.shift>b.shift?1:-1)||(b.mgr?1:0)-(a.mgr?1:0);});
     if(!emps.length)return;
     html+='<tr class="grouprow"><td colspan="12">'+AREAS[area].short+'</td></tr>';
     var at=0;
     emps.forEach(function(e){
-      var d=deductions(e,state.week),b=basePay(e,state.week),ex=extraPay(e,state.week),n=netPay(e,state.week);at+=n;grand+=n;
+      var d=deductions(e,state.week),b=basePay(e,state.week),ex=extraPay(e,state.week),n=netPay(e,state.week);var cost=n+d.abono;at+=cost;grand+=cost;gcash+=n;gabo+=d.abono;
       var tipo=payType(e)==='diario'?'Diario':payType(e)==='semanal'?'Semanal':'Hora';
       html+='<tr><td class="nm">'+esc(e.name)+(e.mgr?' ★':'')+'</td><td>'+tipo+'</td><td>'+fmtMoney(b)+'</td>'+
         '<td>'+(ex?'+'+fmtMoney(ex):'—')+'</td>'+
@@ -1618,7 +1622,8 @@ function buildPayrollPrint(f){
     html+='<tr class="subrow"><td class="nm" colspan="10">Subtotal '+AREAS[area].short+'</td><td><b>'+fmtMoney(at)+'</b></td><td></td></tr>';
   });
   html+='</tbody></table>';
-  html+='<div class="paytotal">Total: <b>'+fmtMoney(grand)+'</b></div>';
+  html+='<div class="paytotal">Costo de nómina: <b>'+fmtMoney(grand)+'</b></div>';
+  if(gabo>0)html+='<div class="psub" style="text-align:right">A pagar en efectivo: <b>'+fmtMoney(gcash)+'</b> · incluye '+fmtMoney(gabo)+' de abonos a préstamos (ya adelantados)</div>';
   if(!list.length)html+='<div class="psub">Sin empleados en este filtro.</div>';
   pa.innerHTML=html;return html;
 }
