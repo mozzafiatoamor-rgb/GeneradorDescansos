@@ -1533,8 +1533,17 @@ function openPayrollSheet(empId){
     });});
     sc.querySelector('#otAdd').addEventListener('click',function(){var m=parseFloat(sc.querySelector('#otMonto').value)||0;if(m<=0){toast('Pon el monto');return;}entry.otros.push({m:m,c:sc.querySelector('#otConc').value.trim()});paint();});
     sc.querySelectorAll('.rm[data-ot]').forEach(function(b){b.addEventListener('click',function(){entry.otros.splice(parseInt(b.getAttribute('data-ot'),10),1);paint();});});
-    sc.querySelectorAll('[data-otr]').forEach(function(b){b.addEventListener('click',function(){var i=parseInt(b.getAttribute('data-otr'),10),o=entry.otros[i];if(!o||!o.m){toast('Sin monto');return;}save();toast('Generando recibo…');drawOtroImage(emp.id,o,function(cv){shareCanvas(cv,'descuento-'+emp.name.split(' ')[0]+'.png','Comprobante de descuento · '+emp.name.split(' ')[0]);});});});
-    var pimg=sc.querySelector('#payImg');if(pimg)pimg.addEventListener('click',function(){entry.faltas=entry.faltas||0;save();toast('Generando imagen…');drawEmployeePayImage(emp.id,function(cv){shareCanvas(cv,'nomina-'+emp.name.split(' ')[0]+'-'+iso(state.week)+'.png','Nómina '+emp.name.split(' ')[0]);});});
+    sc.querySelectorAll('[data-otr]').forEach(function(b){b.addEventListener('click',function(){var i=parseInt(b.getAttribute('data-otr'),10),o=entry.otros[i];if(!o||!o.m){toast('Sin monto');return;}commitEntry();toast('Generando recibo…');drawOtroImage(emp.id,o,function(cv){shareCanvas(cv,'descuento-'+emp.name.split(' ')[0]+'.png','Comprobante de descuento · '+emp.name.split(' ')[0]);});});});
+    function commitEntry(){var k=weekKey(state.week);if(!payroll[k])payroll[k]={};
+      entry.faltas=entry.faltas||0;entry.faltasInj=entry.faltasInj||0;entry.retardos=entry.retardos||0;entry.menosHrs=entry.menosHrs||0;
+      if(!entry.extraManual)delete entry.extraHrs;
+      if(entry.days){entry.faltas=nF();entry.faltasInj=nFi();entry.retardos=nR();}
+      payroll[k][empId]=entry;save();}
+    var pimg=sc.querySelector('#payImg');if(pimg)pimg.addEventListener('click',function(){
+      commitEntry();
+      toast('Generando imagen…');
+      drawEmployeePayImage(emp.id,function(cv){shareCanvas(cv,'nomina-'+emp.name.split(' ')[0]+'-'+iso(state.week)+'.png','Nómina '+emp.name.split(' ')[0]);});
+    });
     var pp=sc.querySelector('#pPaid');if(pp)pp.addEventListener('change',function(){entry.paid=this.checked;});
     var peh=sc.querySelector('#pExtraH');if(peh)peh.addEventListener('input',function(){entry.extraHrs=this.value===''?0:Math.max(0,parseFloat(this.value)||0);entry.extraManual=true;var a=sc.querySelector('#extraAmt');if(a)a.textContent=extra()>0?'+'+fmtMoney(extra()):'';refreshNet();});
     var xa=sc.querySelector('#xtAuto');if(xa)xa.addEventListener('click',function(){delete entry.extraManual;entry.extraHrs=calExtraHours(empId,state.week);paint();});
@@ -1542,8 +1551,8 @@ function openPayrollSheet(empId){
     var pa=sc.querySelector('#pAbono');if(pa)pa.addEventListener('input',function(){entry.abono=this.value===''?null:parseFloat(this.value)||0;refreshNet();var after=sc.querySelectorAll('.loanbox .lrow b')[1];if(after)after.textContent=fmtMoney(Math.max(0,saldoB()-ab()));});
     var al=sc.querySelector('#addLoan');if(al)al.addEventListener('click',setLoan);
     var el2=sc.querySelector('#editLoan');if(el2)el2.addEventListener('click',setLoan);
-    var lr=sc.querySelector('#loanReceipt');if(lr)lr.addEventListener('click',function(){toast('Generando recibo…');drawLoanImage(emp.id,'entrega',null,function(cv){shareCanvas(cv,'prestamo-'+emp.name.split(' ')[0]+'.png','Comprobante de préstamo · '+emp.name.split(' ')[0]);});});
-    sc.querySelectorAll('[data-lpr]').forEach(function(b){b.addEventListener('click',function(){var wk=b.getAttribute('data-lpr');toast('Generando recibo…');drawLoanImage(emp.id,'abono',wk,function(cv){shareCanvas(cv,'abono-'+emp.name.split(' ')[0]+'-'+wk+'.png','Comprobante de abono · '+emp.name.split(' ')[0]);});});});
+    var lr=sc.querySelector('#loanReceipt');if(lr)lr.addEventListener('click',function(){commitEntry();toast('Generando recibo…');drawLoanImage(emp.id,'entrega',null,function(cv){shareCanvas(cv,'prestamo-'+emp.name.split(' ')[0]+'.png','Comprobante de préstamo · '+emp.name.split(' ')[0]);});});
+    sc.querySelectorAll('[data-lpr]').forEach(function(b){b.addEventListener('click',function(){var wk=b.getAttribute('data-lpr');commitEntry();toast('Generando recibo…');drawLoanImage(emp.id,'abono',wk,function(cv){shareCanvas(cv,'abono-'+emp.name.split(' ')[0]+'-'+wk+'.png','Comprobante de abono · '+emp.name.split(' ')[0]);});});});
     var rl=sc.querySelector('#rmLoan');if(rl)rl.addEventListener('click',function(){if(confirm('¿Quitar el préstamo de '+emp.name+'?')){delete emp.loan;entry.abono=null;save();paint();}});
     sc.querySelectorAll('[data-lpd]').forEach(function(b){b.addEventListener('click',function(){
       var wk=b.getAttribute('data-lpd');if(!confirm('¿Eliminar el abono de '+wkLabel(wk)+'? El saldo se recalcula.'))return;
