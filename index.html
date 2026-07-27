@@ -2126,7 +2126,7 @@ function drawEmployeePayImage(empId,cb){
   if(d.falta)items.push(['Faltas ('+d.fN+')','-'+fmtMoney(d.falta),-1]);
   if(d.faltaInj)items.push(['Faltas injustificadas ('+d.fiN+', doble)','-'+fmtMoney(d.faltaInj),-1]);
   if(d.retardo)items.push(['Retardos ('+d.retN+' × $50)','-'+fmtMoney(d.retardo),-1]);
-  if(d.abono)items.push(['Abono a préstamo','-'+fmtMoney(d.abono),-1]);
+  if(d.abono&&!e.loan)items.push(['Abono a préstamo','-'+fmtMoney(d.abono),-1]);
   (ent.otros||[]).forEach(function(o){if(o.m)items.push(['Otro: '+(o.c||'—'),'-'+fmtMoney(o.m),-1]);});
   // tira de la semana
   var weekStrip=[];for(var wd=0;wd<7;wd++){
@@ -2143,8 +2143,17 @@ function drawEmployeePayImage(empId,cb){
     weekStrip.push({wd:WD[wd],dt:addDays(mon,wd).getDate(),lab:lab,col:col,bg:bg});
   }
   var stripH=96;
+  // detalle de préstamo
+  var loanBlock=null,loanBH=0;
+  if(e.loan){
+    var sb=loanSaldoBefore(e,mon),abn=d.abono,sa=Math.max(0,sb-abn);
+    var lpays=loanPayments(e).slice().sort(function(a,b){return a.week<b.week?-1:1;});
+    var recent=lpays.slice(-4).map(function(p){var pp=p.week.split('-');return (+pp[2])+'/'+(+pp[1])+' '+fmtMoney(p.amount);});
+    loanBlock={monto:e.loan.monto||0,motivo:e.loan.motivo||'Adelanto',sb:sb,abn:abn,sa:sa,recent:recent};
+    loanBH=30+4*26+(recent.length?26:0)+16;
+  }
   var scale=3,W=900,pad=44,rowH=52,headH=150,netH=90;
-  var H=pad+headH+stripH+items.length*rowH+netH+pad+30;
+  var H=pad+headH+stripH+items.length*rowH+loanBH+netH+pad+30;
   var cv=document.createElement('canvas');cv.width=W*scale;cv.height=H*scale;
   var x=cv.getContext('2d');x.scale(scale,scale);
   x.fillStyle='#F0E9DC';x.fillRect(0,0,W,H);
@@ -2191,6 +2200,22 @@ function drawEmployeePayImage(empId,cb){
       x.strokeStyle='#F1ECE1';x.beginPath();x.moveTo(ix,y+rowH);x.lineTo(ix+iw,y+rowH);x.stroke();
       y+=rowH;
     });
+    // bloque de préstamo
+    if(loanBlock){
+      y+=4;
+      x.fillStyle='#FAF6EE';rr(ix,y,iw,loanBH,12);x.fill();
+      x.strokeStyle='#EDE3CE';x.lineWidth=1.5;rr(ix,y,iw,loanBH,12);x.stroke();
+      var by=y+24;
+      x.fillStyle='#8A5A12';x.font='800 13px Arial';x.textAlign='left';x.textBaseline='middle';
+      var htxt='PRÉSTAMO / ADELANTO — '+loanBlock.motivo.toUpperCase();x.fillText(htxt.length>52?htxt.slice(0,51)+'…':htxt,ix+16,by);
+      function lrow(lbl,val,neg){by+=26;x.fillStyle='#7a6f5a';x.font='500 14px Arial';x.textAlign='left';x.textBaseline='middle';x.fillText(lbl,ix+16,by);x.fillStyle=neg?'#9A331C':'#2c2114';x.font='700 15px Arial';x.textAlign='right';x.fillText(val,ix+iw-16,by);x.textAlign='left';}
+      lrow('Préstamo total',fmtMoney(loanBlock.monto));
+      lrow('Saldo antes de la semana',fmtMoney(loanBlock.sb));
+      lrow('Abono de esta semana',loanBlock.abn?('-'+fmtMoney(loanBlock.abn)):'—',!!loanBlock.abn);
+      lrow('Saldo restante',fmtMoney(loanBlock.sa));
+      if(loanBlock.recent.length){by+=26;x.fillStyle='#8a8275';x.font='600 12px Arial';x.textAlign='left';x.fillText('Pagos: '+loanBlock.recent.join('   ·   '),ix+16,by);}
+      y+=loanBH+8;
+    }
     // neto
     y+=14;
     x.fillStyle='#16181D';rr(ix,y,iw,64,14);x.fill();
