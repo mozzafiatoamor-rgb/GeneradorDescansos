@@ -277,6 +277,17 @@ h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em}
   .wgrid{min-width:0}
   .botnav{max-width:1100px;left:50%;transform:translateX(-50%);border-radius:16px 16px 0 0}
 }
+@media (min-width:900px){
+  html{background:#c9c1b0;background:radial-gradient(circle at 50% 0,#d6cfbf,#bcb3a0)}
+  body{background:transparent}
+  body::before{content:"";position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);width:462px;background:var(--bg,#F0E9DC);box-shadow:0 0 70px rgba(0,0,0,.28);z-index:-1}
+  .topbar{max-width:462px;margin-left:auto;margin-right:auto;border-radius:0 0 0 0}
+  .wrap{max-width:462px;background:transparent}
+  .botnav{left:calc((100% - 462px)/2);right:calc((100% - 462px)/2);transform:none;max-width:none;border-radius:14px 14px 0 0;box-shadow:0 -4px 20px rgba(0,0,0,.06)}
+  .sheet{left:calc((100% - 462px)/2);right:calc((100% - 462px)/2)}
+  .fab{right:calc((100% - 462px)/2 + 16px)}
+  .toast{bottom:calc(96px + 0px)}
+}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
 /* ===== Nómina ===== */
