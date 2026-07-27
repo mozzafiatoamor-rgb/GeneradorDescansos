@@ -144,6 +144,7 @@ h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em}
 .trow{display:flex;gap:8px}.scol{flex:1;text-align:center;background:#fff;border:1px solid #E7E1D5;border-radius:12px;padding:8px 4px}.scol .scl{font-size:11px;font-weight:700;color:#5a5346;margin-bottom:5px}.scol .scs{font-size:9.5px;color:#8a8275;margin-top:4px;line-height:1.2}.scol .scamt{font-size:11px;font-weight:700;color:#9A331C;margin-top:2px;min-height:14px}.stepper.sm{display:flex;align-items:center;justify-content:center;gap:8px}.stepper.sm .st{width:30px;height:30px}.stepper.sm span{min-width:18px;text-align:center;font-weight:800}
 .trow2{display:flex;gap:8px}.hcol{flex:1;background:#fff;border:1px solid #E7E1D5;border-radius:12px;padding:8px;text-align:center}.hcol .scl{font-size:11px;font-weight:700;color:#5a5346;margin-bottom:6px}.hcol .minnum{width:100%;text-align:center}.hcol .scamt{font-size:11px;font-weight:700;color:#9A331C;margin-top:4px;min-height:14px}.hcol .scamt.pos{color:#1E7D74}.miniimg{border:0;background:#F0E9DC;border-radius:8px;font-size:15px;padding:2px 7px;margin-left:6px;vertical-align:middle;cursor:pointer}
 .attgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.atc{border-radius:9px;padding:6px 2px;text-align:center;cursor:pointer;background:#EAF3EF;color:#1E7D74;user-select:none}.atc.off{background:#F1EEE7;color:#a89f8d;cursor:default}.atc .atwd{font-size:10px;font-weight:700;opacity:.85}.atc .atn{font-size:13px;font-weight:800;line-height:1.1}.atc .atm{font-size:9.5px;font-weight:800;margin-top:1px}
+.attbadge{display:inline-block;font-size:8.5px;font-weight:800;padding:1px 4px;border-radius:99px;margin-top:2px;line-height:1.3;white-space:nowrap}.attbadge.f{background:#FDE7E9;color:#C0344B}.attbadge.fi{background:#F8D9DE;color:#9A1F38}.attbadge.r{background:#FBEBD2;color:#8A5A12}.cell.faltacell{outline:2px solid #EF4E5B;outline-offset:-2px}
 .loanhist{margin:8px 0;border-top:1px dashed #E0D9CB;padding-top:6px}.loanhist .lhh{font-size:11px;font-weight:700;color:#5a5346;margin-bottom:4px}.lpitem{display:flex;align-items:center;gap:8px;font-size:12px;padding:3px 0}.lpitem .lpw{flex:1;color:#5a5346}.lpitem .lpm{font-weight:700;font-variant-numeric:tabular-nums}.lpedit{border:0;background:none;color:#186B62;font-size:13px;padding:2px 4px}.lpitem .rm{border:0;background:none;color:#9A331C;font-size:15px;padding:0 4px}.lptot{font-size:11.5px;color:#5a5346;margin-top:5px;border-top:1px solid #EEE9DE;padding-top:5px}.lptot b{color:#1E7D74}.linkbtn.sm{font-size:10px;padding:2px 0;margin-top:2px;color:#186B62;background:none;border:0;text-decoration:underline}.hcol .scs{font-size:9.5px;color:#8a8275;margin-top:3px}.paidtoggle{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:12px 14px;background:#F1F7F2;border:1px solid #CFE6D4;border-radius:12px;font-weight:700;color:#1f6b46}.paidtag{display:inline-block;background:#1E7D74;color:#fff;font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle}.nomrow.paid{background:#F4FAF5}.paidcount{font-size:12.5px;color:#5a5346;margin-top:6px}.paidcount b{color:#1E7D74}
 .bakstatus{font-size:12px;font-weight:600;padding:9px 11px;border-radius:10px;margin-bottom:10px;line-height:1.35}.bakstatus.ok{background:#EEF7F0;color:#1f6b46;border:1px solid #CFE6D4}.bakstatus.warn{background:#FDF3E7;color:#8a5a12;border:1px solid #F0DDBB}.bakstatus.bad{background:#FCEDEA;color:#9A331C;border:1px solid #F0C9BE}
 .btn.wide{display:block;width:100%;text-align:center;margin-bottom:8px}.btn[disabled]{opacity:.5;pointer-events:none}.divider{height:1px;background:var(--line,#E7E1D5);margin:6px 0 12px}
@@ -776,14 +777,15 @@ function movedHint(e,day,turno,area){var du=effDuty(e,day);
     return null;}
   if(du.area&&du.area!==area)return '→'+AREAS[du.area].short;
   return null;}
+function attendMark(empId,day){var pe=payEntry(empId,state.week);return (pe&&pe.days&&pe.days[day])||null;}
 function cellInTurnoArea(e,day,turno,area){var o=effStatus(e.id,state.week,day);
   if(o.st==='closed')return {st:'closed'};
   var home=(e.shift===turno&&e.area===area);
   if(o.st==='rest')return home?{st:'rest',cover:o.cover}:{st:'off'};
-  var du=effDuty(e,day);
-  if(du.st==='work'&&du.turno===turno&&du.area===area)return {st:'work',task:du.task,xt:du.xt};
-  if(du.st==='cortado'&&du.area===area)return {st:'cortado',task:du.task,xt:du.xt};
-  if(du.st==='medio'&&du.area===area&&((turno==='AM'&&du.am)||(turno==='PM'&&du.pm)))return {st:'medio',am:du.am,pm:du.pm,slots:du.slots,task:du.task,xt:du.xt};
+  var du=effDuty(e,day),att=attendMark(e.id,day);
+  if(du.st==='work'&&du.turno===turno&&du.area===area)return {st:'work',task:du.task,xt:du.xt,att:att};
+  if(du.st==='cortado'&&du.area===area)return {st:'cortado',task:du.task,xt:du.xt,att:att};
+  if(du.st==='medio'&&du.area===area&&((turno==='AM'&&du.am)||(turno==='PM'&&du.pm)))return {st:'medio',am:du.am,pm:du.pm,slots:du.slots,task:du.task,xt:du.xt,att:att};
   if(du.area===area&&extraInTurno(du,turno))return {st:'extra',h:du.xt.h,lbl:du.xt.lbl,xtslot:du.xt.slot};
   return {st:'off',moved:movedHint(e,day,turno,area)};}
 function doubleSomeDay(e){for(var d=0;d<7;d++){var o=getStatus(e.id,state.week,d);
@@ -861,9 +863,12 @@ function renderSemana(){
         grid.appendChild(nc);
         for(var d=0;d<7;d++){
           var s=cellInTurnoArea(e,d,turno,area);
-          var cell=el('<div class="cell '+s.st+(s.moved?' moved':'')+'" data-emp="'+e.id+'" data-day="'+d+'" data-grp="'+turno+'-'+area+'"></div>');
+          var cell=el('<div class="cell '+s.st+(s.moved?' moved':'')+((s.att==='falta'||s.att==='faltaInj')?' faltacell':'')+'" data-emp="'+e.id+'" data-day="'+d+'" data-grp="'+turno+'-'+area+'"></div>');
           var lbl=s.st==='medio'?medioLabel(s,true):s.st==='off'?(s.moved||''):s.st==='extra'?('Extra '+s.lbl):shortLabel(s.st);
           cell.appendChild(el('<span class="tag">'+lbl+'</span>'));
+          if(s.att==='falta')cell.appendChild(el('<span class="attbadge f">Faltó</span>'));
+          else if(s.att==='faltaInj')cell.appendChild(el('<span class="attbadge fi">Falta inj.</span>'));
+          else if(s.att==='retardo')cell.appendChild(el('<span class="attbadge r">⏱ Retardo</span>'));
           if(s.xt)cell.appendChild(el('<span class="xtbadge">+'+s.xt.h+'h '+s.xt.lbl+'</span>'));
           if(s.task)cell.appendChild(el('<span class="taskbadge">🛒 '+esc(s.task)+'</span>'));
           if(s.cover){var cv=employees.filter(function(x){return x.id===s.cover;})[0];if(cv)cell.appendChild(el('<span class="cov">↩ '+esc(cv.name.split(' ')[0])+'</span>'));}
@@ -1619,6 +1624,9 @@ function buildPrint(){
         for(var d=0;d<7;d++){
           var s=cellInTurnoArea(e,d,turno,area);var cp=cellPrint(s);var extra='';
           if(s.cover){var cv=employees.filter(function(x){return x.id===s.cover;})[0];if(cv)extra+=' (cubre '+esc(cv.name.split(' ')[0])+')';}
+          if(s.att==='falta')extra+='<br><b style="color:#C0344B">Faltó</b>';
+          else if(s.att==='faltaInj')extra+='<br><b style="color:#9A1F38">Falta injust.</b>';
+          else if(s.att==='retardo')extra+='<br>⏱ retardo';
           if(s.xt)extra+='<br>+'+s.xt.h+'h '+s.xt.lbl;
           if(s.task)extra+='<br>🛒 '+esc(s.task);
           html+='<td class="'+cp.c+'">'+esc(cp.t)+extra+'</td>';
@@ -1936,6 +1944,8 @@ function buildNombresPrint(){
 }
 /* ---------- imagen para enviar ---------- */
 function statusImg(s){
+  if(s.att==='falta')return {t:'FALTÓ',bg:'#EF4E5B',fg:'#fff'};
+  if(s.att==='faltaInj')return {t:'FALTA INJ.',bg:'#C0344B',fg:'#fff'};
   if(s.st==='rest')return {t:'DESCANSO',bg:'#EF4E5B',fg:'#fff'};
   if(s.st==='closed')return {t:'CERRADO',bg:'#D9D6CF',fg:'#555'};
   if(s.st==='medio')return {t:medioLabel(s,true),bg:'#D4E2EF',fg:'#264a63'};
@@ -2002,9 +2012,11 @@ function drawWeekImage(cb){
             var cx=pad+nameW+dayW*d2, s=cellInTurnoArea(e,d2,B.turno,g.area), si=statusImg(s);
             x.fillStyle=si.bg;rr(cx+2,y+4,dayW-4,rowH-8,7);x.fill();
             if(si.t){x.fillStyle=si.fg;x.font=(si.it?'italic ':'')+'700 13px Arial';x.textAlign='center';x.textBaseline='middle';
-              var tt=si.t.length>13?si.t.slice(0,12)+'…':si.t;var two=(s.xt||s.task);
+              var two=(s.xt||s.task||s.att==='retardo');
+              var tt=si.t.length>13?si.t.slice(0,12)+'…':si.t;
               x.fillText(tt,cx+dayW/2,y+rowH/2-(two?7:0));
-              if(s.xt){x.fillStyle='#186B62';x.font='700 11px Arial';x.fillText('+'+s.xt.h+'h '+s.xt.lbl,cx+dayW/2,y+rowH/2+9);}
+              if(s.att==='retardo'){x.fillStyle='#8A5A12';x.font='800 11px Arial';x.fillText('⏱ retardo',cx+dayW/2,y+rowH/2+9);}
+              else if(s.xt){x.fillStyle='#186B62';x.font='700 11px Arial';x.fillText('+'+s.xt.h+'h '+s.xt.lbl,cx+dayW/2,y+rowH/2+9);}
               else if(s.task){x.fillStyle='#8A5A12';x.font='700 11px Arial';x.fillText('🛒'+s.task,cx+dayW/2,y+rowH/2+9);}
               x.textAlign='left';}
           }
