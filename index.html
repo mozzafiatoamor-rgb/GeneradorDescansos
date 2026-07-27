@@ -2128,21 +2128,33 @@ function drawEmployeePayImage(empId,cb){
   if(d.retardo)items.push(['Retardos ('+d.retN+' × $50)','-'+fmtMoney(d.retardo),-1]);
   if(d.abono&&!e.loan)items.push(['Abono a préstamo','-'+fmtMoney(d.abono),-1]);
   (ent.otros||[]).forEach(function(o){if(o.m)items.push(['Otro: '+(o.c||'—'),'-'+fmtMoney(o.m),-1]);});
-  // tira de la semana
+  // tira de la semana (detallada)
+  function fullHrs(tn){return tn==='AM'?'8:00–16:00':'16:00–24:00';}
   var weekStrip=[];for(var wd=0;wd<7;wd++){
     var st=effStatus(empId,mon,wd).st,mk=(ent.days&&ent.days[wd])||null,du=effDuty(e,wd,mon);
-    var lab,col,bg;
-    if(st==='closed'){lab='Cerr.';col='#8a8275';bg='#ECEAE4';}
-    else if(st==='rest'){lab='Desc.';col='#C0344B';bg='#FDE7E9';}
-    else if(mk==='falta'){lab='Falta';col='#C0344B';bg='#FDE7E9';}
-    else if(mk==='faltaInj'){lab='Injust.';col='#9A1F38';bg='#F8D9DE';}
-    else if(mk==='retardo'){lab='Retardo';col='#8A5A12';bg='#FBEBD2';}
-    else if(st==='medio'){lab=du.slots&&du.slots.length?du.slots.map(function(s){return XSLOTS[s].lbl;}).join(' '):'Medio';col='#264a63';bg='#E1EAF2';}
-    else {lab=(du.turno==='AM'?'Mañana':'Tarde');col='#1E7D74';bg='#EAF3EF';}
-    if(du&&du.xt)lab+=' +'+du.xt.h+'h';
-    weekStrip.push({wd:WD[wd],dt:addDays(mon,wd).getDate(),lab:lab,col:col,bg:bg});
+    var bg='#EAF3EF',lines=[];
+    if(st==='closed'){bg='#ECEAE4';lines=[{t:'Cerrado',c:'#8a8275'}];}
+    else if(st==='rest'){bg='#FDE7E9';lines=[{t:'Descanso',c:'#C0344B'}];}
+    else if(mk==='falta'){bg='#FDE7E9';lines=[{t:'Faltó',c:'#C0344B'}];}
+    else if(mk==='faltaInj'){bg='#F8D9DE';lines=[{t:'Falta',c:'#9A1F38'},{t:'injustif.',c:'#9A1F38'}];}
+    else{
+      if(st==='medio'){
+        bg='#E1EAF2';
+        var sl=(du.slots&&du.slots.length)?du.slots.slice():[];
+        if(!sl.length){if(du.am)sl.push('08-12');if(du.pm)sl.push('16-20');}
+        if(sl.length>1)lines.push({t:'Quebrado',c:'#264a63'});
+        else lines.push({t:'Medio turno',c:'#264a63'});
+        sl.forEach(function(s){lines.push({t:XSLOTS[s]?XSLOTS[s].lbl:s,c:'#264a63'});});
+      }else if(st==='cortado'){bg='#E1EAF2';lines=[{t:'Quebrado',c:'#264a63'},{t:'8–12',c:'#264a63'},{t:'16–20',c:'#264a63'}];}
+      else{bg='#EAF3EF';lines=[{t:(du.turno==='AM'?'Mañana':'Tarde'),c:'#1E7D74'},{t:fullHrs(du.turno),c:'#1E7D74'}];}
+      if(du&&du.xt)lines.push({t:'+'+du.xt.h+'h '+du.xt.lbl,c:'#186B62'});
+      if(mk==='retardo')lines.push({t:'⏱ retardo',c:'#8A5A12'});
+    }
+    weekStrip.push({wd:WD[wd],dt:addDays(mon,wd).getDate(),bg:bg,lines:lines});
   }
-  var stripH=96;
+  var maxLines=weekStrip.reduce(function(m,c){return Math.max(m,c.lines.length);},1);
+  var cellBH=26+maxLines*15+8;
+  var stripH=26+cellBH+14;
   // detalle de préstamo
   var loanBlock=null,loanBH=0;
   if(e.loan){
@@ -2181,13 +2193,16 @@ function drawEmployeePayImage(empId,cb){
     var cw=iw/7;
     weekStrip.forEach(function(c,i){
       var cx=ix+cw*i;
-      x.fillStyle=c.bg;rr(cx+2,y,cw-4,58,8);x.fill();
-      x.fillStyle='#5a5346';x.font='700 11px Arial';x.textAlign='center';x.textBaseline='middle';x.fillText(c.wd+' '+c.dt,cx+cw/2,y+13);
-      x.fillStyle=c.col;x.font='700 11px Arial';
-      var t1=c.lab.length>10?c.lab.slice(0,9)+'…':c.lab;x.fillText(t1,cx+cw/2,y+36);
+      x.fillStyle=c.bg;rr(cx+2,y,cw-4,cellBH,8);x.fill();
+      x.fillStyle='#5a5346';x.font='700 11px Arial';x.textAlign='center';x.textBaseline='middle';x.fillText(c.wd+' '+c.dt,cx+cw/2,y+14);
+      var ly=y+30;
+      c.lines.forEach(function(ln){
+        x.fillStyle=ln.c;x.font='700 10.5px Arial';x.textAlign='center';x.textBaseline='middle';
+        var tt=ln.t.length>13?ln.t.slice(0,12)+'…':ln.t;x.fillText(tt,cx+cw/2,ly);ly+=15;
+      });
       x.textAlign='left';
     });
-    x.textAlign='left';y+=58+12;
+    x.textAlign='left';y+=cellBH+12;
     // items
     items.forEach(function(it){
       x.fillStyle='#3D2B1A';x.font='500 16px Arial';x.textBaseline='middle';x.textAlign='left';
