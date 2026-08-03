@@ -1403,6 +1403,42 @@ function basePay(emp,mon){var e=payEntry(emp.id,mon),t=payType(emp,mon),r=payRat
   if(t==='hora'){var h=(e&&e.horas!=null)?e.horas:workedHours(emp.id,mon);return h*r;}
   var dias=(e&&e.dias!=null)?e.dias:workedDays(emp.id,mon);
   return dias*(t==='semanal'?r/6:r);}
+function openAbonoEditSheet(emp,empId,origWk){
+  var en=(payroll[origWk]&&payroll[origWk][empId])||{};
+  var curAmt=en.abono||0,curDay=(en.abonoDay!=null?en.abonoDay:null);
+  var wks=[];for(var i=-10;i<4;i++){var m=addDays(startOfWeek(new Date()),7*i);wks.push({k:weekKey(m),label:fmtRange(m)});}
+  if(!wks.some(function(w){return w.k===origWk;}))wks.push({k:origWk,label:wkLabel(origWk)});
+  wks.sort(function(a,b){return a.k<b.k?-1:1;});
+  var pick={wk:origWk,day:curDay,amt:curAmt};
+  openSheet(
+    '<div class="shead"><div class="t">Editar abono</div><div class="s">'+esc(emp.name)+'</div></div>'+
+    '<div class="sbody">'+
+      '<div class="fgroup"><label>Semana del abono</label><select class="field" id="aeWeek">'+
+        wks.map(function(w){return '<option value="'+w.k+'"'+(w.k===origWk?' selected':'')+'>'+esc(w.label)+'</option>';}).join('')+
+      '</select></div>'+
+      '<div class="fgroup"><label>Día (opcional)</label><div class="daychips" id="aeDay">'+
+        WD.map(function(l,i){return '<button data-d="'+i+'" class="'+(curDay===i?'on':'')+'">'+l+'</button>';}).join('')+
+      '</div></div>'+
+      '<div class="fgroup"><label>Monto del abono ($)</label><input class="field" id="aeAmt" type="number" inputmode="decimal" min="0" value="'+curAmt+'"></div>'+
+      '<div class="sheetfoot"><button class="btn primary" id="aeSave">Guardar</button><button class="btn ghost" id="aeBack">Volver</button></div>'+
+    '</div>'
+  );
+  sc.querySelector('#aeWeek').addEventListener('change',function(){pick.wk=this.value;});
+  sc.querySelector('#aeAmt').addEventListener('input',function(){pick.amt=Math.max(0,parseFloat(this.value)||0);});
+  sc.querySelectorAll('#aeDay button').forEach(function(b){b.addEventListener('click',function(){
+    var dd=parseInt(b.getAttribute('data-d'),10);
+    if(pick.day===dd){pick.day=null;b.classList.remove('on');}
+    else{pick.day=dd;sc.querySelectorAll('#aeDay button').forEach(function(x){x.classList.remove('on');});b.classList.add('on');}
+  });});
+  sc.querySelector('#aeBack').addEventListener('click',function(){openPayrollSheet(empId);});
+  sc.querySelector('#aeSave').addEventListener('click',function(){
+    if(pick.wk!==origWk&&payroll[origWk]&&payroll[origWk][empId]){payroll[origWk][empId].abono=null;delete payroll[origWk][empId].abonoDay;}
+    if(!payroll[pick.wk])payroll[pick.wk]={};if(!payroll[pick.wk][empId])payroll[pick.wk][empId]={};
+    if(pick.amt>0){payroll[pick.wk][empId].abono=pick.amt;if(pick.day!=null)payroll[pick.wk][empId].abonoDay=pick.day;else delete payroll[pick.wk][empId].abonoDay;}
+    else{payroll[pick.wk][empId].abono=null;delete payroll[pick.wk][empId].abonoDay;}
+    save();toast('Abono actualizado');openPayrollSheet(empId);
+  });
+}
 function loanPayments(emp){var out=[];Object.keys(payroll).forEach(function(k){var en=payroll[k]&&payroll[k][emp.id];if(en&&en.abono>0)out.push({week:k,amount:en.abono,day:(en.abonoDay!=null?en.abonoDay:null)});});out.sort(function(a,b){return a.week<b.week?-1:1;});return out;}
 function loanPaymentsHtml(emp){
   var ps=loanPayments(emp);
@@ -1619,12 +1655,7 @@ function openPayrollSheet(empId){
       save();paint();toast('Abono eliminado');
     });});
     sc.querySelectorAll('[data-lpe]').forEach(function(b){b.addEventListener('click',function(){
-      var wk=b.getAttribute('data-lpe');var curv=(payroll[wk]&&payroll[wk][empId])?payroll[wk][empId].abono:0;
-      var v=prompt('Nuevo monto del abono de '+wkLabel(wk)+':',curv);if(v==null)return;
-      var n=Math.max(0,parseFloat(v)||0);
-      if(!payroll[wk])payroll[wk]={};if(!payroll[wk][empId])payroll[wk][empId]={};
-      payroll[wk][empId].abono=n;if(wk===weekKey(state.week))entry.abono=n;
-      save();paint();toast('Abono actualizado');
+      openAbonoEditSheet(emp,empId,b.getAttribute('data-lpe'));
     });});
     sc.querySelector('#savePay').addEventListener('click',function(){
       var k=weekKey(state.week);if(!payroll[k])payroll[k]={};
