@@ -145,6 +145,7 @@ h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em}
 .trow2{display:flex;gap:8px}.hcol{flex:1;background:#fff;border:1px solid #E7E1D5;border-radius:12px;padding:8px;text-align:center}.hcol .scl{font-size:11px;font-weight:700;color:#5a5346;margin-bottom:6px}.hcol .minnum{width:100%;text-align:center}.hcol .scamt{font-size:11px;font-weight:700;color:#9A331C;margin-top:4px;min-height:14px}.hcol .scamt.pos{color:#1E7D74}.miniimg{border:0;background:#F0E9DC;border-radius:8px;font-size:15px;padding:2px 7px;margin-left:6px;vertical-align:middle;cursor:pointer}
 .attgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.atc{border-radius:9px;padding:6px 2px;text-align:center;cursor:pointer;background:#EAF3EF;color:#1E7D74;user-select:none}.atc.off{background:#F1EEE7;color:#a89f8d;cursor:default}.atc .atwd{font-size:10px;font-weight:700;opacity:.85}.atc .atn{font-size:13px;font-weight:800;line-height:1.1}.atc .atm{font-size:9.5px;font-weight:800;margin-top:1px}
 .attbadge{display:inline-block;font-size:8.5px;font-weight:800;padding:1px 4px;border-radius:99px;margin-top:2px;line-height:1.3;white-space:nowrap}.attbadge.f{background:#FDE7E9;color:#C0344B}.attbadge.fi{background:#F8D9DE;color:#9A1F38}.attbadge.r{background:#FBEBD2;color:#8A5A12}.cell.faltacell{outline:2px solid #EF4E5B;outline-offset:-2px}
+.loanbox.done{background:#EFF6F2;border:1px solid #CDE7DE}
 .loanhist{margin:8px 0;border-top:1px dashed #E0D9CB;padding-top:6px}.loanhist .lhh{font-size:11px;font-weight:700;color:#5a5346;margin-bottom:4px}.lpitem{display:flex;align-items:center;gap:8px;font-size:12px;padding:3px 0}.lpitem .lpw{flex:1;color:#5a5346}.lpitem .lpm{font-weight:700;font-variant-numeric:tabular-nums}.lpedit{border:0;background:none;color:#186B62;font-size:13px;padding:2px 4px}.lpitem .rm{border:0;background:none;color:#9A331C;font-size:15px;padding:0 4px}.lptot{font-size:11.5px;color:#5a5346;margin-top:5px;border-top:1px solid #EEE9DE;padding-top:5px}.lptot b{color:#1E7D74}.linkbtn.sm{font-size:10px;padding:2px 0;margin-top:2px;color:#186B62;background:none;border:0;text-decoration:underline}.hcol .scs{font-size:9.5px;color:#8a8275;margin-top:3px}.paidtoggle{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:12px 14px;background:#F1F7F2;border:1px solid #CFE6D4;border-radius:12px;font-weight:700;color:#1f6b46}.paidtag{display:inline-block;background:#1E7D74;color:#fff;font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle}.nomrow.paid{background:#F4FAF5}.paidcount{font-size:12.5px;color:#5a5346;margin-top:6px}.paidcount b{color:#1E7D74}
 .bakstatus{font-size:12px;font-weight:600;padding:9px 11px;border-radius:10px;margin-bottom:10px;line-height:1.35}.bakstatus.ok{background:#EEF7F0;color:#1f6b46;border:1px solid #CFE6D4}.bakstatus.warn{background:#FDF3E7;color:#8a5a12;border:1px solid #F0DDBB}.bakstatus.bad{background:#FCEDEA;color:#9A331C;border:1px solid #F0C9BE}
 .btn.wide{display:block;width:100%;text-align:center;margin-bottom:8px}.btn[disabled]{opacity:.5;pointer-events:none}.divider{height:1px;background:var(--line,#E7E1D5);margin:6px 0 12px}
@@ -622,12 +623,11 @@ function empRoleAt(e,mon){var b=empBase0(e),r={shift:b.shift,area:b.area,mgr:!!b
   (e.roleHist||[]).slice().sort(function(a,c){return a.from<c.from?-1:1;}).forEach(function(x){if(x.from<=k){if(x.shift)r.shift=x.shift;if(x.area)r.area=x.area;if('mgr' in x)r.mgr=!!x.mgr;}});
   return r;}
 function applyRolesForWeek(mon){employees.forEach(function(e){if(!e.base0)e.base0={shift:e.shift,area:e.area,mgr:!!e.mgr};var r=empRoleAt(e,mon);e.shift=r.shift;e.area=r.area;e.mgr=r.mgr;});}
+function empStints(e){if(e.stints&&e.stints.length)return e.stints;return [{start:e.start||null,end:e.end||null}];}
 function activeInWeek(e,mon){if(!e)return false;var k=weekKey(mon);
-  if(e.start&&k<e.start)return false;
-  if(e.end&&k>=e.end)return false;
-  return true;}
+  return empStints(e).some(function(s){return (!s.start||k>=s.start)&&(!s.end||k<s.end);});}
 function roster(mon){return employees.filter(function(e){return activeInWeek(e,mon);});}
-function activeNow(e){if(!e)return false;if(!e.end)return true;return weekKey(startOfWeek(new Date()))<e.end;}
+function activeNow(e){return activeInWeek(e,startOfWeek(new Date()));}
 function inactiveList(){return employees.filter(function(e){return !activeNow(e);});}
 function generateBase(){
   var b={};
@@ -1224,8 +1224,17 @@ function openEmpSheet(empId){
   sc.querySelector('#saveEmp').addEventListener('click',function(){
     var nm=sc.querySelector('#eName').value.trim();
     if(!nm){toast('Escribe un nombre');return;}
-    emp.name=nm;emp.shift=pick.shift;emp.area=pick.area;emp.mgr=pick.mgr;emp.attrs=pick.attrs;
-    emp.base0={shift:pick.shift,area:pick.area,mgr:!!pick.mgr};
+    emp.name=nm;emp.attrs=pick.attrs;
+    if(!isNew&&emp.roleHist&&emp.roleHist.length){
+      var effK=weekKey(state.week),effNow=empRoleAt(emp,state.week);
+      if(effNow.shift!==pick.shift||effNow.area!==pick.area||!!effNow.mgr!==!!pick.mgr){
+        emp.roleHist=emp.roleHist.filter(function(x){return x.from!==effK;});
+        emp.roleHist.push({from:effK,shift:pick.shift,area:pick.area,mgr:!!pick.mgr});
+      }
+    }else{
+      emp.base0={shift:pick.shift,area:pick.area,mgr:!!pick.mgr};
+    }
+    emp.shift=pick.shift;emp.area=pick.area;emp.mgr=pick.mgr;
     emp.pay={type:pick.payType,rate:parseFloat(sc.querySelector('#eRate').value)||0};
     if(emp.payHist&&emp.payHist.length){emp.payHist=emp.payHist.filter(function(x){return x.from!=='0';});emp.payHist.unshift({from:'0',type:emp.pay.type,rate:emp.pay.rate});}
     var st=sc.querySelector('#eStart');if(st){if(st.value)emp.start=st.value;else delete emp.start;}
@@ -1267,13 +1276,43 @@ function openBajaSheet(empId){
     '</div>'
   );
   sc.querySelector('#bajaGo').addEventListener('click',function(){
-    emp.end=sc.querySelector('#bajaWeek').value;
+    var wkK=sc.querySelector('#bajaWeek').value;
+    var st=empStints(emp).map(function(s){return {start:s.start,end:s.end};});
+    var open=null;for(var i=st.length-1;i>=0;i--){if(!st[i].end){open=st[i];break;}}
+    if(open)open.end=wkK;else st.push({start:wkK,end:wkK});
+    emp.stints=st;emp.end=wkK;
     employees=employees.map(function(e){return e.id===emp.id?emp:e;});
     save();closeSheet();renderPlantilla();renderCalendar();if(state.tab==='nomina')renderNomina();
     toast('Baja registrada · historial conservado');
   });
   var u=sc.querySelector('#bajaUndo');
-  if(u)u.addEventListener('click',function(){delete emp.end;employees=employees.map(function(e){return e.id===emp.id?emp:e;});save();closeSheet();renderPlantilla();renderCalendar();toast('Reactivado');});
+  if(u)u.addEventListener('click',function(){closeSheet();openReintegrarSheet(emp.id);});
+}
+function openReintegrarSheet(empId){
+  var emp=byId(empId);if(!emp)return;
+  var wks=[];for(var i=-1;i<8;i++){var m=addDays(startOfWeek(new Date()),7*i);wks.push({k:weekKey(m),label:(i===-1?'La semana pasada':i===0?'Esta semana':i===1?'La próxima semana':'En '+i+' semanas')+' · '+fmtRange(m)});}
+  var cur=weekKey(startOfWeek(new Date()));
+  openSheet(
+    '<div class="shead"><div class="t">Reintegrar</div><div class="s">'+esc(emp.name)+'</div></div>'+
+    '<div class="sbody">'+
+      '<div class="hint" style="margin-bottom:10px">Vuelve a aparecer <b>a partir de la semana que elijas</b>. Las semanas en que estuvo de baja no se rellenan y su historial anterior queda intacto.</div>'+
+      '<div class="fgroup"><label>Se reintegra a partir de</label><select class="field" id="reWeek">'+
+        wks.map(function(w){return '<option value="'+w.k+'"'+(w.k===cur?' selected':'')+'>'+esc(w.label)+'</option>';}).join('')+
+      '</select></div>'+
+      '<div class="sheetfoot"><button class="btn primary" id="reGo">Confirmar</button></div>'+
+    '</div>'
+  );
+  sc.querySelector('#reGo').addEventListener('click',function(){
+    var wkK=sc.querySelector('#reWeek').value;
+    var st=empStints(emp).map(function(s){return {start:s.start,end:s.end};});
+    // si hay un periodo abierto, ciérralo; agrega uno nuevo desde la semana elegida
+    st.push({start:wkK,end:null});
+    // limpia periodos vacíos (start>=end)
+    st=st.filter(function(s){return !s.end||!s.start||s.start<s.end;});
+    emp.stints=st;delete emp.end;
+    employees=employees.map(function(e){return e.id===emp.id?emp:e;});
+    save();closeSheet();renderBajas&&renderBajas();renderPlantilla();renderCalendar();toast('Reintegrado desde '+wkLabel(wkK));
+  });
 }
 function renderAttrs(){
   var host=document.getElementById('attrsList');if(!host)return;
@@ -1302,13 +1341,13 @@ function renderBajas(){
   if(!list.length){host.innerHTML='<div class="hint">Nadie dado de baja.</div>';return;}
   host.innerHTML='';
   list.forEach(function(e){
-    var row=el('<div class="setrow toggle"><div class="tx"><b>'+esc(e.name)+'</b><small>'+AREAS[e.area].short+' · baja desde la semana '+esc(e.end)+' · historial conservado</small></div><button class="mini" data-re="'+e.id+'">Reactivar</button></div>');
+    var endK=(function(){var st=empStints(e),last=null;st.forEach(function(x){if(x.end)last=x.end;});return last||e.end||'';})();
+    var row=el('<div class="setrow toggle"><div class="tx"><b>'+esc(e.name)+'</b><small>'+AREAS[e.area].short+' · baja desde '+esc(endK?wkLabel(endK):'')+' · historial conservado</small></div><button class="mini" data-re="'+e.id+'">Reintegrar</button></div>');
     host.appendChild(row);
   });
   host.querySelectorAll('[data-re]').forEach(function(b){b.addEventListener('click',function(){
     var em=byId(b.getAttribute('data-re'));if(!em)return;
-    delete em.end;employees=employees.map(function(x){return x.id===em.id?em:x;});
-    save();renderBajas();renderPlantilla();renderCalendar();toast('Reactivado');
+    openReintegrarSheet(em.id);
   });});
 }
 
@@ -1377,7 +1416,7 @@ function loanSaldoBefore(emp,mon){if(!emp.loan)return 0;var sum=0,thisK=weekKey(
   Object.keys(payroll).forEach(function(k){if(k<thisK){var en=payroll[k][emp.id];if(en&&en.abono!=null)sum+=en.abono;}});
   return Math.max(0,emp.loan.monto-sum);}
 function effAbono(emp,mon){if(!emp.loan)return 0;var sb=loanSaldoBefore(emp,mon),e=payEntry(emp.id,mon);
-  var a=(e&&e.abono!=null)?e.abono:Math.min(emp.loan.abono||0,sb);return Math.max(0,Math.min(a,sb));}
+  var a=(e&&e.abono!=null)?e.abono:0;return Math.max(0,Math.min(a,sb));}
 function retCount(e){if(!e)return 0;if(typeof e.retardos==='number')return e.retardos;if(e.retardos&&e.retardos.length)return e.retardos.length;return 0;}
 function payDaysCount(e,mark){if(!e||!e.days)return null;var n=0;for(var d=0;d<7;d++)if(e.days[d]===mark)n++;return n;}
 function nFalta(e){var c=payDaysCount(e,'falta');return c!=null?c:((e&&e.faltas)||0);}
@@ -1452,11 +1491,12 @@ function openPayrollSheet(empId){
   if(entry.faltasInj==null)entry.faltasInj=0;
   entry.extraHrs=(entry.extraManual&&entry.extraHrs!=null)?entry.extraHrs:calExtraHours(empId,state.week);
   if(entry.menosHrs==null)entry.menosHrs=0;
+  if(emp.loan&&entry.abono==null&&!entry.paid){var _sb=loanSaldoBefore(emp,state.week);if(_sb>0)entry.abono=Math.min(emp.loan.abono||0,_sb);}
   var t=payType(emp),r=payRate(emp);
   function vDia(){return valorDia(emp);}
   function bp(){if(t==='hora'){var h=entry.horas!=null?entry.horas:workedHours(emp.id,state.week);return h*r;}var di=entry.dias!=null?entry.dias:workedDays(emp.id,state.week);return di*(t==='semanal'?r/6:r);}
   function saldoB(){return loanSaldoBefore(emp,state.week);}
-  function ab(){if(!emp.loan)return 0;var sb=saldoB();var a=entry.abono!=null?entry.abono:Math.min(emp.loan.abono||0,sb);return Math.max(0,Math.min(a,sb));}
+  function ab(){if(!emp.loan)return 0;var sb=saldoB();var a=entry.abono!=null?entry.abono:0;return Math.max(0,Math.min(a,sb));}
   function vHora(){return vDia()/8;}
   function extra(){return (entry.extraHrs||0)*vHora();}
   function nF(){var c=payDaysCount(entry,'falta');return c!=null?c:(entry.faltas||0);}
@@ -1488,13 +1528,20 @@ function openPayrollSheet(empId){
       : ('<input class="minnum" id="pDias" type="number" inputmode="decimal" min="0" step="0.5" value="'+(entry.dias!=null?entry.dias:workedDays(emp.id,state.week))+'"> días × '+fmtMoney(t==='semanal'?r/6:r)+'/día'+(t==='semanal'?' (sem '+fmtMoney(r)+'÷6)':''));
     var otHtml=entry.otros.map(function(x,i){return '<div class="liitem"><span>'+esc(x.c||'Ajuste')+'</span><span class="m">−'+fmtMoney(x.m||0)+'</span><button class="lpr" data-otr="'+i+'" title="Recibo de este descuento">📸</button><button class="rm" data-ot="'+i+'">×</button></div>';}).join('');
     function scol(label,key,val,sub,amt){return '<div class="scol"><div class="scl">'+label+'</div><div class="stepper sm"><button class="st" data-dec="'+key+'">−</button><span id="'+key+'Val">'+val+'</span><button class="st" data-inc="'+key+'">+</button></div><div class="scs">'+sub+'</div><div class="scamt">'+(amt>0?'−'+fmtMoney(amt):'')+'</div></div>';}
+    var loanDone=emp.loan&&loanSaldoBefore(emp,state.week)<=0;
     var loanHtml = emp.loan
-      ? ('<div class="loanbox"><div class="lrow"><span>Préstamo total</span><b>'+fmtMoney(emp.loan.monto||0)+'</b></div>'+
-         '<div class="lrow"><span>Saldo antes de esta semana</span><b>'+fmtMoney(saldoB())+'</b></div>'+
-         '<div class="lrow"><span>Abono esta semana</span><input class="minnum" id="pAbono" type="number" inputmode="decimal" min="0" value="'+(entry.abono!=null?entry.abono:Math.min(emp.loan.abono||0,saldoB()))+'"></div>'+
-         '<div class="lrow"><span>Saldo después</span><b>'+fmtMoney(Math.max(0,saldoB()-ab()))+'</b></div>'+
-         '<div class="loanhist"><div class="lhh">Pagos registrados</div>'+loanPaymentsHtml(emp)+'</div>'+
-         '<div class="lbtns"><button class="mini" id="loanReceipt">📸 Recibo del préstamo</button><button class="mini" id="editLoan">Editar</button><button class="mini warn" id="rmLoan">Quitar</button></div></div>')
+      ? (loanDone
+        ? ('<div class="loanbox done"><div class="lrow"><span>Préstamo total</span><b>'+fmtMoney(emp.loan.monto||0)+'</b></div>'+
+           '<div class="lrow"><span>Estado</span><b style="color:#1E7D74">Liquidado ✓</b></div>'+
+           '<div class="loanhist"><div class="lhh">Pagos registrados</div>'+loanPaymentsHtml(emp)+'</div>'+
+           '<div class="hint" style="margin:4px 0">Ya está pagado, no descuenta más. Puedes quitarlo o dejarlo como registro.</div>'+
+           '<div class="lbtns"><button class="mini" id="loanReceipt">📸 Recibo</button><button class="mini warn" id="rmLoan">Quitar</button></div></div>')
+        : ('<div class="loanbox"><div class="lrow"><span>Préstamo total</span><b>'+fmtMoney(emp.loan.monto||0)+'</b></div>'+
+           '<div class="lrow"><span>Saldo antes de esta semana</span><b>'+fmtMoney(saldoB())+'</b></div>'+
+           '<div class="lrow"><span>Abono esta semana</span><input class="minnum" id="pAbono" type="number" inputmode="decimal" min="0" value="'+(entry.abono!=null?entry.abono:Math.min(emp.loan.abono||0,saldoB()))+'"></div>'+
+           '<div class="lrow"><span>Saldo después</span><b>'+fmtMoney(Math.max(0,saldoB()-ab()))+'</b></div>'+
+           '<div class="loanhist"><div class="lhh">Pagos registrados</div>'+loanPaymentsHtml(emp)+'</div>'+
+           '<div class="lbtns"><button class="mini" id="loanReceipt">📸 Recibo del préstamo</button><button class="mini" id="editLoan">Editar</button><button class="mini warn" id="rmLoan">Quitar</button></div></div>'))
       : '<button class="mini add" id="addLoan">+ Agregar préstamo</button>';
 
     sc.innerHTML=
