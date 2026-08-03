@@ -146,6 +146,7 @@ h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em}
 .attgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.atc{border-radius:9px;padding:6px 2px;text-align:center;cursor:pointer;background:#EAF3EF;color:#1E7D74;user-select:none}.atc.off{background:#F1EEE7;color:#a89f8d;cursor:default}.atc .atwd{font-size:10px;font-weight:700;opacity:.85}.atc .atn{font-size:13px;font-weight:800;line-height:1.1}.atc .atm{font-size:9.5px;font-weight:800;margin-top:1px}
 .attbadge{display:inline-block;font-size:8.5px;font-weight:800;padding:1px 4px;border-radius:99px;margin-top:2px;line-height:1.3;white-space:nowrap}.attbadge.f{background:#FDE7E9;color:#C0344B}.attbadge.fi{background:#F8D9DE;color:#9A1F38}.attbadge.r{background:#FBEBD2;color:#8A5A12}.cell.faltacell{outline:2px solid #EF4E5B;outline-offset:-2px}
 .loanbox.done{background:#EFF6F2;border:1px solid #CDE7DE}
+.loanbox .lsub{font-size:11px;font-weight:700;color:#5a5346;margin:6px 0 3px}
 .loanhist{margin:8px 0;border-top:1px dashed #E0D9CB;padding-top:6px}.loanhist .lhh{font-size:11px;font-weight:700;color:#5a5346;margin-bottom:4px}.lpitem{display:flex;align-items:center;gap:8px;font-size:12px;padding:3px 0}.lpitem .lpw{flex:1;color:#5a5346}.lpitem .lpm{font-weight:700;font-variant-numeric:tabular-nums}.lpedit{border:0;background:none;color:#186B62;font-size:13px;padding:2px 4px}.lpitem .rm{border:0;background:none;color:#9A331C;font-size:15px;padding:0 4px}.lptot{font-size:11.5px;color:#5a5346;margin-top:5px;border-top:1px solid #EEE9DE;padding-top:5px}.lptot b{color:#1E7D74}.linkbtn.sm{font-size:10px;padding:2px 0;margin-top:2px;color:#186B62;background:none;border:0;text-decoration:underline}.hcol .scs{font-size:9.5px;color:#8a8275;margin-top:3px}.paidtoggle{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:12px 14px;background:#F1F7F2;border:1px solid #CFE6D4;border-radius:12px;font-weight:700;color:#1f6b46}.paidtag{display:inline-block;background:#1E7D74;color:#fff;font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle}.nomrow.paid{background:#F4FAF5}.paidcount{font-size:12.5px;color:#5a5346;margin-top:6px}.paidcount b{color:#1E7D74}
 .bakstatus{font-size:12px;font-weight:600;padding:9px 11px;border-radius:10px;margin-bottom:10px;line-height:1.35}.bakstatus.ok{background:#EEF7F0;color:#1f6b46;border:1px solid #CFE6D4}.bakstatus.warn{background:#FDF3E7;color:#8a5a12;border:1px solid #F0DDBB}.bakstatus.bad{background:#FCEDEA;color:#9A331C;border:1px solid #F0C9BE}
 .btn.wide{display:block;width:100%;text-align:center;margin-bottom:8px}.btn[disabled]{opacity:.5;pointer-events:none}.divider{height:1px;background:var(--line,#E7E1D5);margin:6px 0 12px}
@@ -1402,12 +1403,12 @@ function basePay(emp,mon){var e=payEntry(emp.id,mon),t=payType(emp,mon),r=payRat
   if(t==='hora'){var h=(e&&e.horas!=null)?e.horas:workedHours(emp.id,mon);return h*r;}
   var dias=(e&&e.dias!=null)?e.dias:workedDays(emp.id,mon);
   return dias*(t==='semanal'?r/6:r);}
-function loanPayments(emp){var out=[];Object.keys(payroll).forEach(function(k){var en=payroll[k][emp.id];if(en&&en.abono>0)out.push({week:k,amount:en.abono});});out.sort(function(a,b){return a.week<b.week?-1:1;});return out;}
+function loanPayments(emp){var out=[];Object.keys(payroll).forEach(function(k){var en=payroll[k]&&payroll[k][emp.id];if(en&&en.abono>0)out.push({week:k,amount:en.abono,day:(en.abonoDay!=null?en.abonoDay:null)});});out.sort(function(a,b){return a.week<b.week?-1:1;});return out;}
 function loanPaymentsHtml(emp){
   var ps=loanPayments(emp);
-  if(!ps.length)return '<div class="hint" style="margin:2px 0">Aún no hay abonos registrados.</div>';
+  if(!ps.length)return '<div class="hint" style="margin:2px 0">Aún no hay abonos registrados. Al guardar la nómina con un abono, aparecerá aquí.</div>';
   var tot=ps.reduce(function(a,x){return a+x.amount;},0);
-  return ps.map(function(p){return '<div class="lpitem"><span class="lpw">'+esc(wkLabel(p.week))+'</span><span class="lpm">'+fmtMoney(p.amount)+'</span>'+
+  return ps.map(function(p){var dtxt=(p.day!=null?(' · '+WD[p.day]):'');return '<div class="lpitem"><span class="lpw">'+esc(wkLabel(p.week))+dtxt+'</span><span class="lpm">'+fmtMoney(p.amount)+'</span>'+
     '<button class="lpr" data-lpr="'+p.week+'" title="Recibo de este abono">📸</button><button class="lpedit" data-lpe="'+p.week+'">✎</button><button class="rm" data-lpd="'+p.week+'">×</button></div>';}).join('')+
     '<div class="lptot">Pagado: <b>'+fmtMoney(tot)+'</b> · Falta: <b>'+fmtMoney(Math.max(0,(emp.loan.monto||0)-tot))+'</b></div>';
 }
@@ -1539,8 +1540,12 @@ function openPayrollSheet(empId){
         : ('<div class="loanbox"><div class="lrow"><span>Préstamo total</span><b>'+fmtMoney(emp.loan.monto||0)+'</b></div>'+
            '<div class="lrow"><span>Saldo antes de esta semana</span><b>'+fmtMoney(saldoB())+'</b></div>'+
            '<div class="lrow"><span>Abono esta semana</span><input class="minnum" id="pAbono" type="number" inputmode="decimal" min="0" value="'+(entry.abono!=null?entry.abono:Math.min(emp.loan.abono||0,saldoB()))+'"></div>'+
+           '<div class="lsub">¿Qué día abonó? (opcional)</div><div class="daychips" id="abDay">'+
+             WD.map(function(l,i){return '<button data-abd="'+i+'" class="'+(entry.abonoDay===i?'on':'')+'">'+l+'</button>';}).join('')+
+           '</div>'+
            '<div class="lrow"><span>Saldo después</span><b>'+fmtMoney(Math.max(0,saldoB()-ab()))+'</b></div>'+
            '<div class="loanhist"><div class="lhh">Pagos registrados</div>'+loanPaymentsHtml(emp)+'</div>'+
+           '<div class="hint" style="margin:2px 0 6px">Guarda la nómina para que el abono quede registrado en el historial y baje el saldo.</div>'+
            '<div class="lbtns"><button class="mini" id="loanReceipt">📸 Recibo del préstamo</button><button class="mini" id="editLoan">Editar</button><button class="mini warn" id="rmLoan">Quitar</button></div></div>'))
       : '<button class="mini add" id="addLoan">+ Agregar préstamo</button>';
 
@@ -1585,6 +1590,7 @@ function openPayrollSheet(empId){
       entry.faltas=entry.faltas||0;entry.faltasInj=entry.faltasInj||0;entry.retardos=entry.retardos||0;entry.menosHrs=entry.menosHrs||0;
       if(!entry.extraManual)delete entry.extraHrs;
       if(entry.days){entry.faltas=nF();entry.faltasInj=nFi();entry.retardos=nR();}
+      if(!(entry.abono>0))delete entry.abonoDay;
       payroll[k][empId]=entry;save();}
     var pimg=sc.querySelector('#payImg');if(pimg)pimg.addEventListener('click',function(){
       commitEntry();
@@ -1596,6 +1602,11 @@ function openPayrollSheet(empId){
     var xa=sc.querySelector('#xtAuto');if(xa)xa.addEventListener('click',function(){delete entry.extraManual;entry.extraHrs=calExtraHours(empId,state.week);paint();});
     var pmh=sc.querySelector('#pMenosH');if(pmh)pmh.addEventListener('input',function(){entry.menosHrs=this.value===''?0:Math.max(0,parseFloat(this.value)||0);var a=sc.querySelector('#menosAmt');if(a){var mh=(entry.menosHrs||0)*(vDia()/8);a.textContent=mh>0?'−'+fmtMoney(mh):'';}refreshNet();});
     var pa=sc.querySelector('#pAbono');if(pa)pa.addEventListener('input',function(){entry.abono=this.value===''?null:parseFloat(this.value)||0;refreshNet();var after=sc.querySelectorAll('.loanbox .lrow b')[1];if(after)after.textContent=fmtMoney(Math.max(0,saldoB()-ab()));});
+    sc.querySelectorAll('#abDay button').forEach(function(b){b.addEventListener('click',function(){
+      var dd=parseInt(b.getAttribute('data-abd'),10);
+      if(entry.abonoDay===dd){entry.abonoDay=null;b.classList.remove('on');}
+      else{entry.abonoDay=dd;sc.querySelectorAll('#abDay button').forEach(function(x){x.classList.remove('on');});b.classList.add('on');}
+    });});
     var al=sc.querySelector('#addLoan');if(al)al.addEventListener('click',setLoan);
     var el2=sc.querySelector('#editLoan');if(el2)el2.addEventListener('click',setLoan);
     var lr=sc.querySelector('#loanReceipt');if(lr)lr.addEventListener('click',function(){commitEntry();toast('Generando recibo…');drawLoanImage(emp.id,'entrega',null,function(cv){shareCanvas(cv,'prestamo-'+emp.name.split(' ')[0]+'.png','Comprobante de préstamo · '+emp.name.split(' ')[0]);});});
@@ -1620,6 +1631,7 @@ function openPayrollSheet(empId){
       entry.faltas=entry.faltas||0;entry.faltasInj=entry.faltasInj||0;entry.retardos=entry.retardos||0;entry.menosHrs=entry.menosHrs||0;
       if(!entry.extraManual)delete entry.extraHrs;
       if(entry.days){entry.faltas=nF();entry.faltasInj=nFi();entry.retardos=nR();}
+      if(!(entry.abono>0))delete entry.abonoDay;
       payroll[k][empId]=entry;
       save();closeSheet();renderNomina();toast(entry.paid?'Guardado · Pagado':'Nómina guardada');
     });
@@ -2216,7 +2228,7 @@ function drawEmployeePayImage(empId,cb){
   if(e.loan){
     var sb=loanSaldoBefore(e,mon),abn=d.abono,sa=Math.max(0,sb-abn);
     var lpays=loanPayments(e).slice().sort(function(a,b){return a.week<b.week?-1:1;});
-    var recent=lpays.slice(-4).map(function(p){var pp=p.week.split('-');return (+pp[2])+'/'+(+pp[1])+' '+fmtMoney(p.amount);});
+    var recent=lpays.slice(-4).map(function(p){var pp=p.week.split('-');return (+pp[2])+'/'+(+pp[1])+(p.day!=null?(' '+WD[p.day]):'')+' '+fmtMoney(p.amount);});
     loanBlock={monto:e.loan.monto||0,motivo:e.loan.motivo||'Adelanto',sb:sb,abn:abn,sa:sa,recent:recent};
     loanBH=30+4*26+(recent.length?26:0)+16;
   }
@@ -2282,7 +2294,8 @@ function drawEmployeePayImage(empId,cb){
       function lrow(lbl,val,neg){by+=26;x.fillStyle='#7a6f5a';x.font='500 14px Arial';x.textAlign='left';x.textBaseline='middle';x.fillText(lbl,ix+16,by);x.fillStyle=neg?'#9A331C':'#2c2114';x.font='700 15px Arial';x.textAlign='right';x.fillText(val,ix+iw-16,by);x.textAlign='left';}
       lrow('Préstamo total',fmtMoney(loanBlock.monto));
       lrow('Saldo antes de la semana',fmtMoney(loanBlock.sb));
-      lrow('Abono de esta semana',loanBlock.abn?('-'+fmtMoney(loanBlock.abn)):'—',!!loanBlock.abn);
+      var abLbl='Abono de esta semana'+((ent.abonoDay!=null&&loanBlock.abn)?(' ('+WD[ent.abonoDay]+')'):'');
+      lrow(abLbl,loanBlock.abn?('-'+fmtMoney(loanBlock.abn)):'—',!!loanBlock.abn);
       lrow('Saldo restante',fmtMoney(loanBlock.sa));
       if(loanBlock.recent.length){by+=26;x.fillStyle='#8a8275';x.font='600 12px Arial';x.textAlign='left';x.fillText('Pagos: '+loanBlock.recent.join('   ·   '),ix+16,by);}
       y+=loanBH+8;
