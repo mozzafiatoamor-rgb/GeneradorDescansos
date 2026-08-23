@@ -635,7 +635,7 @@ function setStatus(empId,mon,dayIdx,obj){
   // if equals base default and no cover, clear override to keep it clean
   var isBaseRest=base[empId]&&base[empId].indexOf(dayIdx)>-1;
   var defaultSt=isBaseRest?'rest':'work';
-  if(obj.st===defaultSt&&!obj.cover&&!obj.shift&&!obj.area&&!obj.task&&!obj.xtH){delete weeks[key][empId][dayIdx];
+  if(obj.st===defaultSt&&!obj.cover&&!obj.shift&&!obj.area&&!obj.task&&!obj.xtH&&!obj.custom){delete weeks[key][empId][dayIdx];
     if(!Object.keys(weeks[key][empId]).length)delete weeks[key][empId];
     if(!Object.keys(weeks[key]).length)delete weeks[key];
   }else{weeks[key][empId][dayIdx]=obj;}
@@ -788,12 +788,13 @@ function renderWarnbar(){
 function medioLabel(o,short){if(o.slots&&o.slots.length){var ls=o.slots.slice().sort().map(function(s){return XSLOTS[s]?XSLOTS[s].lbl:s;});return (short?'':'Quebrado ')+ls.join(short?'·':' y ');}if(o.am&&o.pm)return short?'½+½':'Turno quebrado';return o.am?(short?'½AM':'Medio mañana 4h'):(short?'½PM':'Medio noche 4h');}
 function effDuty(e,day,mon){mon=mon||state.week;var o=effStatus(e.id,mon,day);
   var xt=null;if(o.xtH>0){var sl=slotOf(o,e);xt={h:o.xtH,slot:sl,t:XSLOTS[sl].turno,lbl:XSLOTS[sl].lbl};}
+  if(o.custom&&(o.st==='work'||o.st==='medio'||o.st==='cortado'||!o.st))return {st:'custom',turno:(hm2min(o.custom.s)<960?'AM':'PM'),area:o.area||e.area,custom:o.custom,task:o.task||'',xt:xt};
   if(o.st==='work')return {st:'work',turno:o.shift||e.shift,area:o.area||e.area,task:o.task||'',xt:xt};
   if(o.st==='cortado')return {st:'cortado',area:o.area||e.area,task:o.task||'',xt:xt};
   if(o.st==='medio')return {st:'medio',area:o.area||e.area,am:!!o.am,pm:!!o.pm,slots:(o.slots&&o.slots.length)?o.slots.slice():null,task:o.task||'',xt:xt};
   return {st:o.st};}
 function extraInTurno(du,turno){return !!(du&&du.xt&&du.xt.t===turno&&du.xt.h>0);}
-function dutyInTurno(du,turno){if(!du)return false;if(du.st==='work')return du.turno===turno;if(du.st==='cortado')return true;if(du.st==='medio')return (turno==='AM'&&du.am)||(turno==='PM'&&du.pm);return false;}
+function dutyInTurno(du,turno){if(!du)return false;if(du.st==='work'||du.st==='custom')return du.turno===turno;if(du.st==='cortado')return true;if(du.st==='medio')return (turno==='AM'&&du.am)||(turno==='PM'&&du.pm);return false;}
 function presentInTurno(du,turno){return dutyInTurno(du,turno)||extraInTurno(du,turno);}
 function worksTurnoSomeDay(e,turno){for(var d=0;d<7;d++){var du=effDuty(e,d);if(presentInTurno(du,turno))return true;}return false;}
 function worksGroupSomeDay(e,turno,area){for(var d=0;d<7;d++){var du=effDuty(e,d);if(du.area===area&&presentInTurno(du,turno))return true;}return false;}
@@ -813,6 +814,7 @@ function cellInTurnoArea(e,day,turno,area){var o=effStatus(e.id,state.week,day);
   var home=(e.shift===turno&&e.area===area);
   if(o.st==='rest')return home?{st:'rest',cover:o.cover}:{st:'off'};
   var du=effDuty(e,day),att=attendMark(e.id,day);
+  if(du.st==='custom'&&du.turno===turno&&du.area===area)return {st:'custom',custom:du.custom,task:du.task,xt:du.xt,att:att};
   if(du.st==='work'&&du.turno===turno&&du.area===area)return {st:'work',task:du.task,xt:du.xt,att:att};
   if(du.st==='cortado'&&du.area===area)return {st:'cortado',task:du.task,xt:du.xt,att:att};
   if(du.st==='medio'&&du.area===area&&((turno==='AM'&&du.am)||(turno==='PM'&&du.pm)))return {st:'medio',am:du.am,pm:du.pm,slots:du.slots,task:du.task,xt:du.xt,att:att};
@@ -894,7 +896,7 @@ function renderSemana(){
         for(var d=0;d<7;d++){
           var s=cellInTurnoArea(e,d,turno,area);
           var cell=el('<div class="cell '+s.st+(s.moved?' moved':'')+((s.att==='falta'||s.att==='faltaInj')?' faltacell':'')+'" data-emp="'+e.id+'" data-day="'+d+'" data-grp="'+turno+'-'+area+'"></div>');
-          var lbl=s.st==='medio'?medioLabel(s,true):s.st==='off'?(s.moved||''):s.st==='extra'?('Extra '+s.lbl):shortLabel(s.st);
+          var lbl=s.st==='medio'?medioLabel(s,true):s.st==='custom'?customLabel(s,true):s.st==='off'?(s.moved||''):s.st==='extra'?('Extra '+s.lbl):shortLabel(s.st);
           cell.appendChild(el('<span class="tag">'+lbl+'</span>'));
           if(s.att==='falta')cell.appendChild(el('<span class="attbadge f">Faltó</span>'));
           else if(s.att==='faltaInj')cell.appendChild(el('<span class="attbadge fi">Falta inj.</span>'));
@@ -1090,15 +1092,20 @@ function openCellSheet(empId,dayIdx){
     '<div class="s">'+AREAS[emp.area].short+' · '+SHIFTS[emp.shift].label+' · '+WD_FULL[dayIdx]+' '+date.getDate()+' '+MONTHS[date.getMonth()]+'</div></div>'+
     '<div class="sbody">'+
       '<div class="fgroup"><label>Estado del día</label><div class="segm" id="segSt">'+
-        '<button data-st="work" class="'+(cur.st==='work'?'on':'')+'"><span class="em">●</span>Trabaja</button>'+
+        '<button data-st="work" class="'+(cur.st==='work'&&!cur.custom?'on':'')+'"><span class="em">●</span>Trabaja</button>'+
         '<button data-st="medio" class="'+(cur.st==='medio'?'on':'')+'"><span class="em">½</span>Medio 4h</button>'+
+        '<button data-st="custom" class="'+(cur.custom?'on':'')+'"><span class="em">🕐</span>Horario</button>'+
         '<button data-st="rest" class="'+(cur.st==='rest'?'on':'')+'"><span class="em">⏾</span>Descanso</button>'+
       '</div></div>'+
-      '<div class="fgroup" id="workShiftGroup" style="'+(cur.st==='work'?'':'display:none')+'"><label>Turno de este día</label><div class="daychips" id="workShift">'+
+      '<div class="fgroup" id="customGroup" style="'+(cur.custom?'':'display:none')+'"><label>Horario exacto de este día</label><div class="trow2">'+
+        '<div class="hcol"><div class="scl">Entrada</div><input class="field" id="cStart" type="time" step="900" value="'+((cur.custom&&cur.custom.s)||'08:00')+'"></div>'+
+        '<div class="hcol"><div class="scl">Salida</div><input class="field" id="cEnd" type="time" step="900" value="'+((cur.custom&&cur.custom.e)||'14:00')+'"></div>'+
+      '</div><div class="hint" id="cHint" style="margin-top:6px"></div></div>'+
+      '<div class="fgroup" id="workShiftGroup" style="'+(cur.st==='work'&&!cur.custom?'':'display:none')+'"><label>Turno de este día</label><div class="daychips" id="workShift">'+
         '<button data-sh="AM" class="'+((cur.shift||emp.shift)==='AM'?'on':'')+'">Mañana</button>'+
         '<button data-sh="PM" class="'+((cur.shift||emp.shift)==='PM'?'on':'')+'">Tarde</button>'+
       '</div></div>'+
-      '<div class="fgroup" id="workAreaGroup" style="'+(cur.st==='work'||cur.st==='medio'?'':'display:none')+'"><label>Puesto de este día</label><div class="daychips" id="workArea">'+
+      '<div class="fgroup" id="workAreaGroup" style="'+(cur.st==='work'||cur.st==='medio'||cur.custom?'':'display:none')+'"><label>Puesto de este día</label><div class="daychips" id="workArea">'+
         AREA_ORDER.map(function(a){return '<button data-ar="'+a+'" class="'+((cur.area||emp.area)===a?'on':'')+'">'+AREAS[a].short+'</button>';}).join('')+
       '</div></div>'+
       '<div class="fgroup" id="medioGroup" style="'+(cur.st==='medio'?'':'display:none')+'"><label>Turno quebrado — elige 1 o 2 horarios</label><div class="daychips" id="medioParts">'+
@@ -1123,18 +1130,24 @@ function openCellSheet(empId,dayIdx){
   );
   var initSlots=(cur.slots&&cur.slots.length)?cur.slots.slice():[];
   if(!initSlots.length){if(cur.am)initSlots.push('08-12');if(cur.pm)initSlots.push('16-20');}
-  var chosen={st:cur.st,cover:cur.cover||null,slots:initSlots,shift:cur.shift||emp.shift,area:cur.area||emp.area,task:cur.task||'',xtH:cur.xtH||0,xtSlot:curSlot};
+  var chosen={st:cur.custom?'custom':cur.st,cover:cur.cover||null,slots:initSlots,shift:cur.shift||emp.shift,area:cur.area||emp.area,task:cur.task||'',xtH:cur.xtH||0,xtSlot:curSlot,cs:(cur.custom&&cur.custom.s)||'08:00',ce:(cur.custom&&cur.custom.e)||'14:00'};
   function slotsAM(sl){return XSLOTS[sl]&&XSLOTS[sl].turno==='AM';}
   function amFrom(){return chosen.slots.some(slotsAM);}
   function pmFrom(){return chosen.slots.some(function(s){return !slotsAM(s);});}
+  function updCHint(){var el2=sc.querySelector('#cHint');if(!el2)return;var h=Math.max(0,(hm2min(chosen.ce)-hm2min(chosen.cs))/60);el2.textContent=h>0?('Total: '+(h%1?h.toFixed(2):h)+' h — se calculan solas en nómina y propinas.'):'La salida debe ser después de la entrada.';}
   function syncGroups(){
     sc.querySelector('#coverGroup').style.display=chosen.st==='rest'?'block':'none';
     sc.querySelector('#medioGroup').style.display=chosen.st==='medio'?'block':'none';
+    sc.querySelector('#customGroup').style.display=chosen.st==='custom'?'block':'none';
     sc.querySelector('#workShiftGroup').style.display=chosen.st==='work'?'block':'none';
-    sc.querySelector('#workAreaGroup').style.display=(chosen.st==='work'||chosen.st==='medio')?'block':'none';
-    sc.querySelector('#taskGroup').style.display=(chosen.st==='work'||chosen.st==='medio')?'block':'none';
-    sc.querySelector('#xtGroup').style.display=(chosen.st==='work'||chosen.st==='medio')?'block':'none';
+    sc.querySelector('#workAreaGroup').style.display=(chosen.st==='work'||chosen.st==='medio'||chosen.st==='custom')?'block':'none';
+    sc.querySelector('#taskGroup').style.display=(chosen.st==='work'||chosen.st==='medio'||chosen.st==='custom')?'block':'none';
+    sc.querySelector('#xtGroup').style.display=(chosen.st==='work'||chosen.st==='medio'||chosen.st==='custom')?'block':'none';
+    if(chosen.st==='custom')updCHint();
   }
+  var csEl=sc.querySelector('#cStart'),ceEl=sc.querySelector('#cEnd');
+  if(csEl)csEl.addEventListener('input',function(){chosen.cs=this.value||'08:00';updCHint();});
+  if(ceEl)ceEl.addEventListener('input',function(){chosen.ce=this.value||'14:00';updCHint();});
   sc.querySelectorAll('#segSt button').forEach(function(b){
     b.addEventListener('click',function(){
       chosen.st=b.getAttribute('data-st');
@@ -1172,6 +1185,15 @@ function openCellSheet(empId,dayIdx){
   sc.querySelector('#coverSel').addEventListener('change',function(){chosen.cover=this.value||null;});
   sc.querySelector('#saveCell').addEventListener('click',function(){
     if(chosen.st!=='rest')chosen.cover=null;
+    if(chosen.st==='custom'){
+      if(hm2min(chosen.ce)<=hm2min(chosen.cs)){toast('La salida debe ser después de la entrada');return;}
+      var oc={st:'work',cover:null,custom:{s:chosen.cs,e:chosen.ce}};
+      if(chosen.area&&chosen.area!==emp.area)oc.area=chosen.area;
+      if(chosen.task)oc.task=chosen.task;
+      if(chosen.xtH>0){oc.xtH=chosen.xtH;oc.xtSlot=chosen.xtSlot;}
+      setStatus(empId,state.week,dayIdx,oc);
+      closeSheet();renderCalendar();toast('Guardado');return;
+    }
     if(chosen.st==='medio'&&!chosen.slots.length){chosen.slots=[(emp.shift==='AM')?'08-12':'16-20'];}
     var obj={st:chosen.st,cover:chosen.cover};
     if(chosen.st==='medio'){obj.slots=chosen.slots.slice();obj.am=amFrom();obj.pm=pmFrom();}
@@ -1437,8 +1459,11 @@ function payAt(emp,mon){
 function payType(emp,mon){return payAt(emp,mon||state.week).type||'diario';}
 function payRate(emp,mon){return payAt(emp,mon||state.week).rate||0;}
 function valorDia(emp,mon){var p=payAt(emp,mon||state.week),t=p.type,r=p.rate||0;return t==='diario'?r:t==='semanal'?r/6:8*r;}
-function unitOfObj(o){if(!o)return 0;if(o.st==='work'||o.st==='cortado')return 1;if(o.st==='medio'){var u=(o.am?0.5:0)+(o.pm?0.5:0);return u||0.5;}return 0;}
-function hoursOfObj(o){if(!o)return 0;if(o.st==='work'||o.st==='cortado')return 8;if(o.st==='medio'){var h=(o.am?4:0)+(o.pm?4:0);return h||4;}return 0;}
+function unitOfObj(o){if(!o)return 0;if(o.custom)return Math.max(0,(hm2min(o.custom.e)-hm2min(o.custom.s))/60)/8;if(o.st==='work'||o.st==='cortado')return 1;if(o.st==='medio'){var u=(o.am?0.5:0)+(o.pm?0.5:0);return u||0.5;}return 0;}
+function hm2min(s){if(!s)return 0;var p=(''+s).split(':');return (+p[0])*60+(+(p[1]||0));}
+function min2hm(m){var h=Math.floor(m/60),mm=m%60;var ap=h<12?'a.m.':(h<24?'p.m.':'a.m.');var h12=h%12;if(h12===0)h12=12;return h12+(mm?(':'+(mm<10?'0':'')+mm):':00')+' '+ap;}
+function customLabel(o,short){if(!o||!o.custom)return '';var s=hm2min(o.custom.s),e=hm2min(o.custom.e);function sh(m){var h=Math.floor(m/60),mm=m%60;return h+(mm?(':'+(mm<10?'0':'')+mm):'');}return sh(s)+'–'+sh(e);}
+function hoursOfObj(o){if(!o)return 0;if(o.custom)return Math.max(0,(hm2min(o.custom.e)-hm2min(o.custom.s))/60);if(o.st==='work'||o.st==='cortado')return 8;if(o.st==='medio'){var h=(o.am?4:0)+(o.pm?4:0);return h||4;}return 0;}
 function workedDays(empId,mon){var n=0;for(var d=0;d<7;d++)n+=unitOfObj(effStatus(empId,mon,d));return n;}
 function workedHours(empId,mon){var h=0;for(var d=0;d<7;d++)h+=hoursOfObj(effStatus(empId,mon,d));return h;}
 function payEntry(empId,mon){var w=payroll[weekKey(mon)];return (w&&w[empId])||null;}
@@ -1513,7 +1538,7 @@ function deductions(emp,mon){var e=payEntry(emp.id,mon)||{};
   var o=(e.otros||[]).reduce(function(a,x){return a+(x.m||0);},0);
   var ab=effAbono(emp,mon);
   return {falta:f,faltaInj:fi,retardo:r,retN:nRet(e),fN:nFalta(e),fiN:nFaltaInj(e),menosHrs:mh,otro:o,abono:ab,total:f+fi+r+mh+o+ab};}
-function calExtraHours(empId,mon){var h=0;for(var d=0;d<7;d++){var o=effStatus(empId,mon,d);if(o&&o.xtH>0&&(o.st==='work'||o.st==='medio'||o.st==='cortado'))h+=o.xtH;}return h;}
+function calExtraHours(empId,mon){var h=0;for(var d=0;d<7;d++){var o=effStatus(empId,mon,d);if(o&&o.xtH>0&&(o.st==='work'||o.st==='medio'||o.st==='cortado'||o.custom))h+=o.xtH;}return h;}
 function extraHoursOf(emp,mon){var e=payEntry(emp.id,mon);return (e&&e.extraManual&&e.extraHrs!=null)?e.extraHrs:calExtraHours(emp.id,mon);}
 function extraPay(emp,mon){return extraHoursOf(emp,mon)*(valorDia(emp,mon)/8);}
 function isPaid(emp,mon){var e=payEntry(emp.id,mon);return !!(e&&e.paid);}
@@ -2098,6 +2123,7 @@ function statusImg(s){
   if(s.st==='rest')return {t:'DESCANSO',bg:'#EF4E5B',fg:'#fff'};
   if(s.st==='closed')return {t:'CERRADO',bg:'#D9D6CF',fg:'#555'};
   if(s.st==='medio')return {t:medioLabel(s,true),bg:'#D4E2EF',fg:'#264a63'};
+  if(s.st==='custom')return {t:customLabel(s,true),bg:'#DCEBE7',fg:'#1E6B62'};
   if(s.st==='cortado')return {t:'Cortado',bg:'#FBE4BB',fg:'#6b4a12'};
   if(s.st==='extra')return {t:'Extra '+s.lbl,bg:'#E4F1EE',fg:'#186B62'};
   if(s.st==='off')return s.moved?{t:s.moved,bg:'#FBF3F6',fg:'#A85B7C',it:true}:{t:'',bg:'#FCFCFB',fg:'#ccc'};
@@ -2287,7 +2313,8 @@ function drawEmployeePayImage(empId,cb){
     else if(mk==='falta'){bg='#FDE7E9';lines=[{t:'Faltó',c:'#C0344B'}];}
     else if(mk==='faltaInj'){bg='#F8D9DE';lines=[{t:'Falta',c:'#9A1F38'},{t:'injustif.',c:'#9A1F38'}];}
     else{
-      if(st==='medio'){
+      if(du.st==='custom'){bg='#DCEBE7';lines=[{t:'Horario',c:'#1E6B62'},{t:customLabel(du,true),c:'#1E6B62'}];}
+      else if(st==='medio'){
         bg='#E1EAF2';
         var sl=(du.slots&&du.slots.length)?du.slots.slice():[];
         if(!sl.length){if(du.am)sl.push('08-12');if(du.pm)sl.push('16-20');}
@@ -2806,9 +2833,10 @@ function attrsNatural(e){
 }
 function personSentence(e,day){
   var du=effDuty(e,day);
-  if(!(du.st==='work'||du.st==='medio'||du.st==='cortado'))return null;
+  if(!(du.st==='work'||du.st==='medio'||du.st==='cortado'||du.st==='custom'))return null;
   var nm='*'+e.name+'*',clause;
-  if(du.st==='work')clause=(du.turno==='AM')?'trabaja en la mañana, de 8:00 a.m. a 4:00 p.m.':'trabaja en la tarde, de 4:00 p.m. a 12:00 de la noche';
+  if(du.st==='custom'){clause='trabaja de '+min2hm(hm2min(du.custom.s))+' a '+min2hm(hm2min(du.custom.e));}
+  else if(du.st==='work')clause=(du.turno==='AM')?'trabaja en la mañana, de 8:00 a.m. a 4:00 p.m.':'trabaja en la tarde, de 4:00 p.m. a 12:00 de la noche';
   else if(du.st==='medio'){
     if(du.slots&&du.slots.length){
       var hrs=du.slots.slice().sort().map(function(s){return slotHoursText(s);});
@@ -2847,7 +2875,7 @@ function buildTextSummary(opt){
   function personsIn(d,turno,area){
     return list.filter(function(e){
       var du=effDuty(e,d);
-      if(!(du.st==='work'||du.st==='medio'||du.st==='cortado'))return false;
+      if(!(du.st==='work'||du.st==='medio'||du.st==='cortado'||du.st==='custom'))return false;
       if(area&&du.area!==area)return false;
       if(turno&&!presentInTurno(du,turno))return false;
       return true;
