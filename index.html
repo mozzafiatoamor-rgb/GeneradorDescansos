@@ -2508,45 +2508,46 @@ function renderPropinas(){
   applyRolesForWeek(state.week);
   var host=document.getElementById('propinasContent');if(!host)return;
   var k=weekKey(state.week);if(!tips[k])tips[k]={total:0};
-  var R=computeTips(state.week);
   host.innerHTML='';
   var head=el('<div class="nomhead"><button class="wk" id="pvPrev">‹</button><div class="wklab"><b>Propinas</b><small>'+fmtRange(state.week)+'</small></div><button class="wk" id="pvNext">›</button></div>');
   host.appendChild(head);
   var pot=el('<div class="tippot"><label>Total de propina de la semana</label><div class="potrow"><span class="cur">$</span><input id="tipTotal" type="number" inputmode="decimal" min="0" value="'+((tips[k].total)||0)+'"></div></div>');
   host.appendChild(pot);
-  if(!R.list.length){host.appendChild(el('<div class="empty">Nadie con horas registradas esta semana.</div>'));}
-  else{
-    var box=el('<div class="tiplist"></div>');
-    R.list.slice().sort(function(a,b){return b.net-a.net;}).forEach(function(r){
-      var fd=tipFineDetail(r.emp,state.week);
-      var finesTxt=[];
-      if(fd.ret)finesTxt.push(fd.ret+' retardo'+(fd.ret>1?'s':'')+' (−'+fmtMoney(fd.ret*50)+')');
-      if(fd.fi)finesTxt.push(fd.fi+' injust. (−'+fmtMoney(fd.fi*100)+')');
-      var card=el('<div class="tipcard"><div class="tct"><div class="nm">'+esc(r.emp.name)+'</div><div class="net">'+fmtMoney(r.net)+'</div></div>'+
-        '<div class="tsub">'+r.h+' h · base '+fmtMoney(r.base)+
-        (r.finesIn>0.001?(' · +'+fmtMoney(r.finesIn)+' de multas'):'')+
-        (r.fine>0?(' · <span style="color:#C0344B">−'+fmtMoney(r.fine)+' su multa</span>'):'')+'</div>'+
-        (finesTxt.length?'<div class="tsub2">'+finesTxt.join(' · ')+'</div>':'')+
-        '<div class="tbtns"><button class="mini" data-tip="'+r.emp.id+'">📸 Comprobante</button></div></div>');
-      box.appendChild(card);
-    });
-    host.appendChild(box);
-    var foot=el('<div class="tipsum">'+
-      '<div class="tsr"><span>Bote de propina</span><b>'+fmtMoney(R.pot)+'</b></div>'+
-      '<div class="tsr"><span>Horas totales</span><b>'+R.Htot+' h</b></div>'+
-      '<div class="tsr"><span>Repartido</span><b>'+fmtMoney(R.distributed)+'</b></div>'+
-      '<div class="tsr"><span>Sobrante (redondeo)</span><b>'+fmtMoney(R.remainder)+'</b></div>'+
-    '</div>');
-    host.appendChild(foot);
-    var acts=el('<div class="tipacts"><button class="btn primary" id="tipImg">📸 Resumen en imagen</button></div>');
-    host.appendChild(acts);
+  var body=el('<div id="tipBody"></div>');host.appendChild(body);
+  function refreshBody(){
+    var R=computeTips(state.week);
+    var html='';
+    if(!R.list.length){html='<div class="empty">Nadie con horas registradas esta semana.</div>';}
+    else{
+      html+='<div class="tiplist">';
+      R.list.slice().sort(function(a,b){return b.net-a.net;}).forEach(function(r){
+        var fd=tipFineDetail(r.emp,state.week),finesTxt=[];
+        if(fd.ret)finesTxt.push(fd.ret+' retardo'+(fd.ret>1?'s':'')+' (−'+fmtMoney(fd.ret*50)+')');
+        if(fd.fi)finesTxt.push(fd.fi+' injust. (−'+fmtMoney(fd.fi*100)+')');
+        html+='<div class="tipcard"><div class="tct"><div class="nm">'+esc(r.emp.name)+'</div><div class="net">'+fmtMoney(r.net)+'</div></div>'+
+          '<div class="tsub">'+r.h+' h · base '+fmtMoney(r.base)+
+          (r.finesIn>0.001?(' · +'+fmtMoney(r.finesIn)+' de multas'):'')+
+          (r.fine>0?(' · <span style="color:#C0344B">−'+fmtMoney(r.fine)+' su multa</span>'):'')+'</div>'+
+          (finesTxt.length?'<div class="tsub2">'+finesTxt.join(' · ')+'</div>':'')+
+          '<div class="tbtns"><button class="mini" data-tip="'+r.emp.id+'">📸 Comprobante</button></div></div>';
+      });
+      html+='</div>';
+      html+='<div class="tipsum">'+
+        '<div class="tsr"><span>Bote de propina</span><b>'+fmtMoney(R.pot)+'</b></div>'+
+        '<div class="tsr"><span>Horas totales</span><b>'+R.Htot+' h</b></div>'+
+        '<div class="tsr"><span>Repartido</span><b>'+fmtMoney(R.distributed)+'</b></div>'+
+        '<div class="tsr"><span>Sobrante (redondeo)</span><b>'+fmtMoney(R.remainder)+'</b></div></div>';
+      html+='<div class="tipacts"><button class="btn primary" id="tipImg">📸 Resumen en imagen</button></div>';
+    }
+    body.innerHTML=html;
+    body.querySelectorAll('[data-tip]').forEach(function(b){b.addEventListener('click',function(){toast('Generando comprobante…');drawTipImage(b.getAttribute('data-tip'),function(cv){shareCanvas(cv,'propina-'+byId(b.getAttribute('data-tip')).name.split(' ')[0]+'-'+iso(state.week)+'.png','Propina '+byId(b.getAttribute('data-tip')).name.split(' ')[0]);});});});
+    var tsi=body.querySelector('#tipImg');if(tsi)tsi.addEventListener('click',function(){toast('Generando resumen…');drawTipsSummaryImage(function(cv){shareCanvas(cv,'propinas-'+iso(state.week)+'.png','Propinas '+fmtRange(state.week));});});
   }
+  refreshBody();
   head.querySelector('#pvPrev').addEventListener('click',function(){state.week=addDays(state.week,-7);renderPropinas();});
   head.querySelector('#pvNext').addEventListener('click',function(){state.week=addDays(state.week,7);renderPropinas();});
   var ti=host.querySelector('#tipTotal');
-  if(ti)ti.addEventListener('input',function(){tips[k].total=Math.max(0,parseFloat(this.value)||0);save();renderPropinas();});
-  host.querySelectorAll('[data-tip]').forEach(function(b){b.addEventListener('click',function(){toast('Generando comprobante…');drawTipImage(b.getAttribute('data-tip'),function(cv){shareCanvas(cv,'propina-'+byId(b.getAttribute('data-tip')).name.split(' ')[0]+'-'+iso(state.week)+'.png','Propina '+byId(b.getAttribute('data-tip')).name.split(' ')[0]);});});});
-  var tsi=host.querySelector('#tipImg');if(tsi)tsi.addEventListener('click',function(){toast('Generando resumen…');drawTipsSummaryImage(function(cv){shareCanvas(cv,'propinas-'+iso(state.week)+'.png','Propinas '+fmtRange(state.week));});});
+  if(ti)ti.addEventListener('input',function(){tips[k].total=Math.max(0,parseFloat(this.value)||0);save();refreshBody();});
 }
 function drawTipImage(empId,cb){
   var e=byId(empId);if(!e)return;applyRolesForWeek(state.week);
