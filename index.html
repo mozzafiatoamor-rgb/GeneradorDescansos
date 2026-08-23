@@ -150,6 +150,7 @@ h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em}
 .loanbox .lsub{font-size:11px;font-weight:700;color:#5a5346;margin:6px 0 3px}
 .tippot{background:#fff;border:1px solid #EAE3D5;border-radius:14px;padding:12px 14px;margin:10px 0}.tippot label{display:block;font-size:12px;font-weight:700;color:#5a5346;margin-bottom:6px}.potrow{display:flex;align-items:center;gap:6px}.potrow .cur{font-size:22px;font-weight:800;color:#1E7D74}.potrow input{flex:1;border:1px solid #E7E1D5;border-radius:10px;padding:10px;font-size:20px;font-weight:800;color:#2c2114}.tiplist{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}.tipcard{background:#fff;border:1px solid #EAE3D5;border-radius:14px;padding:12px 14px}.tipcard .tct{display:flex;justify-content:space-between;align-items:baseline}.tipcard .nm{font-weight:800;color:#2c2114;font-size:15px}.tipcard .net{font-weight:800;color:#1E7D74;font-size:18px}.tipcard .tsub{font-size:12px;color:#6a6152;margin-top:3px}.tipcard .tsub2{font-size:11.5px;color:#9A331C;margin-top:2px}.tipcard .tbtns{margin-top:8px}.tipsum{background:#fff;border:1px solid #EAE3D5;border-radius:14px;padding:10px 14px;margin-bottom:10px}.tipsum .tsr{display:flex;justify-content:space-between;padding:3px 0;font-size:14px;color:#5a5346}.tipsum .tsr b{color:#2c2114}.tipacts{margin-bottom:20px}
 #sedeBar{display:flex;gap:6px;margin-top:10px}.sedebtn{flex:1;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#f3ede0;border-radius:10px;padding:8px 6px;font-size:13px;font-weight:700;cursor:pointer}.sedebtn.on{background:#fff;color:#16181D;border-color:#fff}
+.tiptot2{display:flex;justify-content:space-between;align-items:center;background:#16181D;color:#fff;border-radius:14px;padding:12px 16px;margin:10px 0}.tiptot2 span{font-size:13px;font-weight:600;opacity:.85}.tiptot2 b{font-size:22px;font-weight:800}.tipcal{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}.tcday{background:#fff;border:1px solid #EAE3D5;border-radius:14px;padding:10px 12px}.tcdh{font-weight:800;color:#2c2114;font-size:14px;margin-bottom:6px}.tcturn{display:grid;grid-template-columns:56px 1fr 1fr 1fr;gap:6px;align-items:end;margin-top:6px}.tct2{font-size:12px;font-weight:700;color:#5a5346;padding-bottom:10px}.tcamt{display:flex;align-items:center;gap:3px;border:1px solid #E7E1D5;border-radius:9px;padding:6px 8px}.tcamt span{color:#1E7D74;font-weight:800}.tcamt input{border:0;width:100%;font-size:15px;font-weight:700;color:#2c2114;background:transparent}.tcresp label{display:block;font-size:9.5px;font-weight:700;color:#9a958a;margin-bottom:2px}.tcresp select{width:100%;border:1px solid #E7E1D5;border-radius:9px;padding:6px 4px;font-size:12px;background:#fff;color:#2c2114}.tiphd{font-weight:800;color:#5a5346;font-size:13px;margin:6px 0}
 .loanhist{margin:8px 0;border-top:1px dashed #E0D9CB;padding-top:6px}.loanhist .lhh{font-size:11px;font-weight:700;color:#5a5346;margin-bottom:4px}.lpitem{display:flex;align-items:center;gap:8px;font-size:12px;padding:3px 0}.lpitem .lpw{flex:1;color:#5a5346}.lpitem .lpm{font-weight:700;font-variant-numeric:tabular-nums}.lpedit{border:0;background:none;color:#186B62;font-size:13px;padding:2px 4px}.lpitem .rm{border:0;background:none;color:#9A331C;font-size:15px;padding:0 4px}.lptot{font-size:11.5px;color:#5a5346;margin-top:5px;border-top:1px solid #EEE9DE;padding-top:5px}.lptot b{color:#1E7D74}.linkbtn.sm{font-size:10px;padding:2px 0;margin-top:2px;color:#186B62;background:none;border:0;text-decoration:underline}.hcol .scs{font-size:9.5px;color:#8a8275;margin-top:3px}.paidtoggle{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:12px 14px;background:#F1F7F2;border:1px solid #CFE6D4;border-radius:12px;font-weight:700;color:#1f6b46}.paidtag{display:inline-block;background:#1E7D74;color:#fff;font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle}.nomrow.paid{background:#F4FAF5}.paidcount{font-size:12.5px;color:#5a5346;margin-top:6px}.paidcount b{color:#1E7D74}
 .bakstatus{font-size:12px;font-weight:600;padding:9px 11px;border-radius:10px;margin-bottom:10px;line-height:1.35}.bakstatus.ok{background:#EEF7F0;color:#1f6b46;border:1px solid #CFE6D4}.bakstatus.warn{background:#FDF3E7;color:#8a5a12;border:1px solid #F0DDBB}.bakstatus.bad{background:#FCEDEA;color:#9A331C;border:1px solid #F0C9BE}
 .btn.wide{display:block;width:100%;text-align:center;margin-bottom:8px}.btn[disabled]{opacity:.5;pointer-events:none}.divider{height:1px;background:var(--line,#E7E1D5);margin:6px 0 12px}
@@ -2487,16 +2488,19 @@ function tipMark(empId,mon,d){var pe=payEntry(empId,mon);return (pe&&pe.days&&pe
 function tipHours(emp,mon){var h=0;for(var d=0;d<7;d++){var st=effStatus(emp.id,mon,d),base=hoursOfObj(st),mk=tipMark(emp.id,mon,d);if(mk==='falta'||mk==='faltaInj')base=0;h+=base;}return h;}
 function tipFine(emp,mon){var f=0;for(var d=0;d<7;d++){var mk=tipMark(emp.id,mon,d);if(mk==='retardo')f+=TIP_FINE.retardo;else if(mk==='faltaInj')f+=TIP_FINE.faltaInj;}return f;}
 function tipFineDetail(emp,mon){var r=0,fi=0;for(var d=0;d<7;d++){var mk=tipMark(emp.id,mon,d);if(mk==='retardo')r++;else if(mk==='faltaInj')fi++;}return {ret:r,fi:fi,total:r*TIP_FINE.retardo+fi*TIP_FINE.faltaInj};}
+function tipPot(mon){var k=weekKey(mon),t=tips[k];if(!t)return 0;
+  if(t.days){var s=0;for(var d=0;d<7;d++){var dd=t.days[d];if(!dd)continue;['AM','PM'].forEach(function(tn){if(dd[tn]&&dd[tn].amt)s+=dd[tn].amt;});}return s;}
+  return t.total||0;}
+function tipCell(k,d,tn){if(!tips[k])tips[k]={};if(!tips[k].days)tips[k].days={};if(!tips[k].days[d])tips[k].days[d]={};if(!tips[k].days[d][tn])tips[k].days[d][tn]={amt:0,r1:'',r2:''};return tips[k].days[d][tn];}
 function computeTips(mon){
-  var k=weekKey(mon),pot=(tips[k]&&tips[k].total)||0;
+  var k=weekKey(mon),pot=tipPot(mon);
   var list=roster(mon).map(function(e){return {emp:e,h:tipHours(e,mon),fine:tipFine(e,mon)};}).filter(function(r){return r.h>0||r.fine>0;});
   var Htot=list.reduce(function(a,r){return a+r.h;},0);
   list.forEach(function(r){r.base=Htot>0?pot*r.h/Htot:0;});
-  // reparto de multas: cada multa j se reparte entre los demás por horas
   list.forEach(function(r){r.finesIn=0;});
   list.forEach(function(j){
     if(j.fine<=0)return;
-    var denom=Htot-j.h; // horas de los demás
+    var denom=Htot-j.h;
     if(denom<=0)return;
     list.forEach(function(i){if(i===j)return;i.finesIn+=j.fine*(i.h/denom);});
   });
@@ -2507,28 +2511,48 @@ function computeTips(mon){
 function renderPropinas(){
   applyRolesForWeek(state.week);
   var host=document.getElementById('propinasContent');if(!host)return;
-  var k=weekKey(state.week);if(!tips[k])tips[k]={total:0};
+  var k=weekKey(state.week);if(!tips[k])tips[k]={};
+  var WDF=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+  var ppl=roster(state.week).slice().sort(function(a,b){return a.name.localeCompare(b.name);});
+  function opts(sel){return '<option value="">—</option>'+ppl.map(function(e){return '<option value="'+e.id+'"'+(sel===e.id?' selected':'')+'>'+esc(e.name.split(' ')[0])+'</option>';}).join('');}
   host.innerHTML='';
   var head=el('<div class="nomhead"><button class="wk" id="pvPrev">‹</button><div class="wklab"><b>Propinas</b><small>'+fmtRange(state.week)+'</small></div><button class="wk" id="pvNext">›</button></div>');
   host.appendChild(head);
-  var pot=el('<div class="tippot"><label>Total de propina de la semana</label><div class="potrow"><span class="cur">$</span><input id="tipTotal" type="number" inputmode="decimal" min="0" value="'+((tips[k].total)||0)+'"></div></div>');
-  host.appendChild(pot);
+  var totbar=el('<div class="tiptot2"><span>Total recaudado</span><b id="tipTotView">'+fmtMoney(tipPot(state.week))+'</b></div>');
+  host.appendChild(totbar);
+  host.appendChild(el('<div class="hint" style="margin:0 0 8px">Captura lo recaudado por turno y sus 2 responsables. El reparto se hace los <b>lunes</b>.</div>'));
+  // calendario de recaudación
+  var cal=el('<div class="tipcal"></div>');
+  for(var d=0;d<7;d++){
+    var day=el('<div class="tcday"><div class="tcdh">'+WDF[d]+' '+addDays(state.week,d).getDate()+'</div></div>');
+    ['AM','PM'].forEach(function(tn){
+      var c=tipCell(k,d,tn);
+      var row=el('<div class="tcturn"><div class="tct2">'+(tn==='AM'?'Mañana':'Tarde')+'</div>'+
+        '<div class="tcamt"><span>$</span><input type="number" inputmode="decimal" min="0" data-amt="'+d+'-'+tn+'" value="'+(c.amt||'')+'" placeholder="0"></div>'+
+        '<div class="tcresp"><label>Barra/Piso</label><select data-r1="'+d+'-'+tn+'">'+opts(c.r1)+'</select></div>'+
+        '<div class="tcresp"><label>Cocina</label><select data-r2="'+d+'-'+tn+'">'+opts(c.r2)+'</select></div>'+
+      '</div>');
+      day.appendChild(row);
+    });
+    cal.appendChild(day);
+  }
+  host.appendChild(cal);
   var body=el('<div id="tipBody"></div>');host.appendChild(body);
   function refreshBody(){
-    var R=computeTips(state.week);
-    var html='';
+    document.getElementById('tipTotView').textContent=fmtMoney(tipPot(state.week));
+    var R=computeTips(state.week),html='';
     if(!R.list.length){html='<div class="empty">Nadie con horas registradas esta semana.</div>';}
     else{
-      html+='<div class="tiplist">';
+      html+='<div class="tiphd">Reparto (se paga el lunes)</div><div class="tiplist">';
       R.list.slice().sort(function(a,b){return b.net-a.net;}).forEach(function(r){
-        var fd=tipFineDetail(r.emp,state.week),finesTxt=[];
-        if(fd.ret)finesTxt.push(fd.ret+' retardo'+(fd.ret>1?'s':'')+' (−'+fmtMoney(fd.ret*50)+')');
-        if(fd.fi)finesTxt.push(fd.fi+' injust. (−'+fmtMoney(fd.fi*100)+')');
+        var fd=tipFineDetail(r.emp,state.week),ft=[];
+        if(fd.ret)ft.push(fd.ret+' retardo'+(fd.ret>1?'s':'')+' (−'+fmtMoney(fd.ret*50)+')');
+        if(fd.fi)ft.push(fd.fi+' injust. (−'+fmtMoney(fd.fi*100)+')');
         html+='<div class="tipcard"><div class="tct"><div class="nm">'+esc(r.emp.name)+'</div><div class="net">'+fmtMoney(r.net)+'</div></div>'+
           '<div class="tsub">'+r.h+' h · base '+fmtMoney(r.base)+
           (r.finesIn>0.001?(' · +'+fmtMoney(r.finesIn)+' de multas'):'')+
           (r.fine>0?(' · <span style="color:#C0344B">−'+fmtMoney(r.fine)+' su multa</span>'):'')+'</div>'+
-          (finesTxt.length?'<div class="tsub2">'+finesTxt.join(' · ')+'</div>':'')+
+          (ft.length?'<div class="tsub2">'+ft.join(' · ')+'</div>':'')+
           '<div class="tbtns"><button class="mini" data-tip="'+r.emp.id+'">📸 Comprobante</button></div></div>';
       });
       html+='</div>';
@@ -2537,17 +2561,19 @@ function renderPropinas(){
         '<div class="tsr"><span>Horas totales</span><b>'+R.Htot+' h</b></div>'+
         '<div class="tsr"><span>Repartido</span><b>'+fmtMoney(R.distributed)+'</b></div>'+
         '<div class="tsr"><span>Sobrante (redondeo)</span><b>'+fmtMoney(R.remainder)+'</b></div></div>';
-      html+='<div class="tipacts"><button class="btn primary" id="tipImg">📸 Resumen en imagen</button></div>';
+      html+='<div class="tipacts"><button class="btn primary" id="tipImg">📸 Resumen del reparto</button><button class="btn ghost" id="tipResp">📸 Responsables de recaudación</button></div>';
     }
     body.innerHTML=html;
     body.querySelectorAll('[data-tip]').forEach(function(b){b.addEventListener('click',function(){toast('Generando comprobante…');drawTipImage(b.getAttribute('data-tip'),function(cv){shareCanvas(cv,'propina-'+byId(b.getAttribute('data-tip')).name.split(' ')[0]+'-'+iso(state.week)+'.png','Propina '+byId(b.getAttribute('data-tip')).name.split(' ')[0]);});});});
     var tsi=body.querySelector('#tipImg');if(tsi)tsi.addEventListener('click',function(){toast('Generando resumen…');drawTipsSummaryImage(function(cv){shareCanvas(cv,'propinas-'+iso(state.week)+'.png','Propinas '+fmtRange(state.week));});});
+    var trb=body.querySelector('#tipResp');if(trb)trb.addEventListener('click',function(){toast('Generando imagen…');drawTipsResponsablesImage(function(cv){shareCanvas(cv,'responsables-'+iso(state.week)+'.png','Responsables de recaudación '+fmtRange(state.week));});});
   }
   refreshBody();
   head.querySelector('#pvPrev').addEventListener('click',function(){state.week=addDays(state.week,-7);renderPropinas();});
   head.querySelector('#pvNext').addEventListener('click',function(){state.week=addDays(state.week,7);renderPropinas();});
-  var ti=host.querySelector('#tipTotal');
-  if(ti)ti.addEventListener('input',function(){tips[k].total=Math.max(0,parseFloat(this.value)||0);save();refreshBody();});
+  cal.querySelectorAll('[data-amt]').forEach(function(inp){inp.addEventListener('input',function(){var p=inp.getAttribute('data-amt').split('-'),c=tipCell(k,+p[0],p[1]);c.amt=Math.max(0,parseFloat(inp.value)||0);save();refreshBody();});});
+  cal.querySelectorAll('[data-r1]').forEach(function(sel){sel.addEventListener('change',function(){var p=sel.getAttribute('data-r1').split('-'),c=tipCell(k,+p[0],p[1]);c.r1=sel.value;save();});});
+  cal.querySelectorAll('[data-r2]').forEach(function(sel){sel.addEventListener('change',function(){var p=sel.getAttribute('data-r2').split('-'),c=tipCell(k,+p[0],p[1]);c.r2=sel.value;save();});});
 }
 function drawTipImage(empId,cb){
   var e=byId(empId);if(!e)return;applyRolesForWeek(state.week);
@@ -2628,6 +2654,52 @@ function drawTipsSummaryImage(cb){
     sr('Repartido',fmtMoney(R.distributed));
     sr('Sobrante (redondeo hacia abajo)',fmtMoney(R.remainder));
     x.fillStyle='#8a8275';x.font='500 12px Arial';x.fillText('Reparto por horas trabajadas. Las multas se descuentan al multado y se reparten entre los demás.',ix,y+6);
+    cb(cv);
+  });
+}
+
+function drawTipsResponsablesImage(cb){
+  applyRolesForWeek(state.week);
+  var k=weekKey(state.week),WDF=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+  var rows=[];var gtot=0;
+  for(var d=0;d<7;d++){['AM','PM'].forEach(function(tn){
+    var c=(tips[k]&&tips[k].days&&tips[k].days[d]&&tips[k].days[d][tn])||null;
+    if(!c)return;var amt=c.amt||0;if(!amt&&!c.r1&&!c.r2)return;gtot+=amt;
+    var nm=function(id){var e=byId(id);return e?e.name.split(' ')[0]:'—';};
+    rows.push({day:WDF[d].slice(0,3),turno:(tn==='AM'?'Mañana':'Tarde'),amt:amt,r1:nm(c.r1),r2:nm(c.r2)});
+  });}
+  var scale=3,W=1000,pad=44,headH=150,rowH=44;
+  var H=pad+headH+40+Math.max(rows.length,1)*rowH+90+pad;
+  var cv=document.createElement('canvas');cv.width=W*scale;cv.height=H*scale;
+  var x=cv.getContext('2d');x.scale(scale,scale);
+  x.fillStyle='#F0E9DC';x.fillRect(0,0,W,H);
+  function rr(px,py,pw,ph,rad){x.beginPath();x.moveTo(px+rad,py);x.arcTo(px+pw,py,px+pw,py+ph,rad);x.arcTo(px+pw,py+ph,px,py+ph,rad);x.arcTo(px,py+ph,px,py,rad);x.arcTo(px,py,px+pw,py,rad);x.closePath();}
+  withLogo(function(){
+    x.fillStyle='#fff';rr(pad,pad,W-pad*2,H-pad*2,18);x.fill();
+    var ix=pad+28,iw=W-pad*2-56,y=pad+34;
+    x.fillStyle='#16181D';rr(ix,y,120,54,12);x.fill();
+    if(window._logoImg&&window._logoImg.complete&&window._logoImg.naturalWidth){try{var lw=window._logoImg.naturalWidth,lh=window._logoImg.naturalHeight,ls=Math.min(100/lw,42/lh);x.drawImage(window._logoImg,ix+(120-lw*ls)/2,y+(54-lh*ls)/2,lw*ls,lh*ls);}catch(er){}}
+    else{x.fillStyle='#fff';x.font='700 16px Arial';x.textBaseline='middle';x.fillText('Mozzafiato',ix+12,y+27);}
+    x.textBaseline='alphabetic';x.fillStyle='#3D2B1A';x.font='700 22px Arial';x.fillText('Responsables de recaudación',ix+140,y+24);
+    x.fillStyle='#7A6040';x.font='500 15px Arial';x.fillText('Semana '+fmtRange(state.week),ix+140,y+46);
+    y+=80;
+    x.fillStyle='#8a8275';x.font='700 12px Arial';x.textBaseline='middle';
+    x.textAlign='left';x.fillText('DÍA / TURNO',ix,y+14);
+    x.textAlign='center';x.fillText('RECAUDADO',ix+iw*0.42,y+14);x.fillText('BARRA/PISO',ix+iw*0.64,y+14);x.fillText('COCINA',ix+iw*0.87,y+14);
+    y+=28;x.strokeStyle='#EAE3D5';x.lineWidth=1.5;x.beginPath();x.moveTo(ix,y);x.lineTo(ix+iw,y);x.stroke();y+=4;
+    if(!rows.length){x.fillStyle='#9a958a';x.font='500 15px Arial';x.textAlign='left';x.textBaseline='middle';x.fillText('Sin capturas esta semana.',ix+8,y+rowH/2);y+=rowH;}
+    rows.forEach(function(r,i){
+      if(i%2===0){x.fillStyle='#FAF8F3';rr(ix,y,iw,rowH-4,6);x.fill();}
+      x.textBaseline='middle';
+      x.fillStyle='#2c2114';x.font='700 14px Arial';x.textAlign='left';x.fillText(r.day+' · '+r.turno,ix+8,y+(rowH-4)/2);
+      x.fillStyle='#1E7D74';x.font='800 15px Arial';x.textAlign='center';x.fillText(fmtMoney(r.amt),ix+iw*0.42,y+(rowH-4)/2);
+      x.fillStyle='#3D2B1A';x.font='600 13px Arial';x.fillText(r.r1,ix+iw*0.64,y+(rowH-4)/2);x.fillText(r.r2,ix+iw*0.87,y+(rowH-4)/2);
+      x.textAlign='left';y+=rowH;
+    });
+    y+=8;x.strokeStyle='#EAE3D5';x.beginPath();x.moveTo(ix,y);x.lineTo(ix+iw,y);x.stroke();y+=16;
+    x.fillStyle='#16181D';rr(ix,y,iw,52,12);x.fill();
+    x.fillStyle='#EFE7D6';x.font='600 15px Arial';x.textBaseline='middle';x.textAlign='left';x.fillText('TOTAL RECAUDADO EN LA SEMANA',ix+18,y+26);
+    x.fillStyle='#fff';x.font='800 24px Arial';x.textAlign='right';x.fillText(fmtMoney(gtot),ix+iw-18,y+27);x.textAlign='left';
     cb(cv);
   });
 }
