@@ -1261,6 +1261,8 @@ function openEmpSheet(empId){
       '</select><div class="hint">No aparecerá en semanas anteriores a esa (no altera tu historial).</div></div>'+
       (isNew?'':'<button class="linkbtn" id="mgrRole" style="text-align:left;color:var(--plum)">🔀 Cambios de turno/área con fecha…</button>')+
       '<div class="fgroup"><label>Número en el reloj checador</label><input class="field" id="eClock" type="number" inputmode="numeric" min="0" value="'+(emp.clockId||'')+'" placeholder="ej. 2"><div class="hint">El número entre paréntesis del reporte del reloj. Sirve para importar checadas.</div></div>'+
+      '<div class="fgroup"><label>WhatsApp</label><input class="field" id="eWa" type="tel" inputmode="tel" value="'+(emp.wa||'')+'" placeholder="ej. 983 123 4567"><div class="hint">10 dígitos (México). Sirve para enviarle su horario y su nómina.</div></div>'+
+      '<button class="btn ghost" id="waHorario" style="margin-bottom:8px">💬 Enviar su horario de la semana</button>'+
       '<div class="sheetfoot"><button class="btn primary" id="saveEmp">Guardar</button></div>'+
       (isNew?'':'<button class="linkbtn" id="bajaEmp">Dar de baja (conserva su historial)</button>')+
       (isNew?'':'<button class="linkbtn" id="delEmp" style="color:var(--warn)">Eliminar y borrar su historial</button>')+
@@ -1282,11 +1284,16 @@ function openEmpSheet(empId){
   sc.querySelectorAll('#eAttrs button').forEach(function(b){b.addEventListener('click',function(){
     var a=b.getAttribute('data-at'),i=pick.attrs.indexOf(a);
     if(i>-1){pick.attrs.splice(i,1);b.classList.remove('on');}else{pick.attrs.push(a);b.classList.add('on');}});});
+  var wah=sc.querySelector('#waHorario');if(wah)wah.addEventListener('click',function(){
+    var _wa=((sc.querySelector('#eWa')||{}).value||'').replace(/\D/g,'');var tmp={name:((sc.querySelector('#eName')||{}).value||emp.name),wa:_wa||emp.wa};
+    waSend(tmp,empWeekText(emp,state.week));
+  });
   sc.querySelector('#saveEmp').addEventListener('click',function(){
     var nm=sc.querySelector('#eName').value.trim();
     if(!nm){toast('Escribe un nombre');return;}
     emp.name=nm;emp.attrs=pick.attrs;
     var _cl=(sc.querySelector('#eClock')||{}).value;emp.clockId=(_cl&&(''+_cl).trim())?(''+_cl).trim():null;
+    var _wa=((sc.querySelector('#eWa')||{}).value||'').replace(/\D/g,'');emp.wa=_wa?_wa:null;
     if(!isNew&&emp.roleHist&&emp.roleHist.length){
       var effK=weekKey(state.week),effNow=empRoleAt(emp,state.week);
       if(effNow.shift!==pick.shift||effNow.area!==pick.area||!!effNow.mgr!==!!pick.mgr){
@@ -1684,6 +1691,7 @@ function openPayrollSheet(empId){
         '<div class="fgroup"><label>Otros descuentos</label><div class="lilist">'+otHtml+'</div><div class="addrow"><input class="field sm" id="otConc" placeholder="concepto"><input class="field sm" id="otMonto" type="number" inputmode="decimal" placeholder="$ monto"><button class="mini add" id="otAdd">+</button></div></div>'+
         '<div class="netbox"><span>Neto a pagar</span><b id="netoVal">'+fmtMoney(net())+'</b></div>'+
         '<label class="paidtoggle"><span>Marcar como pagado</span><span class="swt"><input type="checkbox" id="pPaid" '+(entry.paid?'checked':'')+'><span></span></span></label>'+
+        '<button class="btn ghost" id="payWa" style="margin-bottom:8px">💬 Enviar recibo por WhatsApp</button>'+
         '<div class="sheetfoot"><button class="btn primary" id="savePay">Guardar</button></div>'+
       '</div>';
     bind();
@@ -1714,9 +1722,10 @@ function openPayrollSheet(empId){
       payroll[k][empId]=entry;save();}
     var pimg=sc.querySelector('#payImg');if(pimg)pimg.addEventListener('click',function(){
       commitEntry();
-      toast('Generando imagen…');
-      drawEmployeePayImage(emp.id,function(cv){shareCanvas(cv,'nomina-'+emp.name.split(' ')[0]+'-'+iso(state.week)+'.png','Nómina '+emp.name.split(' ')[0]);});
+      toast('Generando recibo…');
+      drawEmployeePayImage(emp.id,function(cv){shareCanvasToEmp(cv,'nomina-'+emp.name.split(' ')[0]+'-'+iso(state.week)+'.png','Nómina '+emp.name.split(' ')[0],emp,empPayText(emp,state.week));});
     });
+    var pwa=sc.querySelector('#payWa');if(pwa)pwa.addEventListener('click',function(){commitEntry();waSend(emp,empPayText(emp,state.week));});
     var pp=sc.querySelector('#pPaid');if(pp)pp.addEventListener('change',function(){entry.paid=this.checked;});
     var peh=sc.querySelector('#pExtraH');if(peh)peh.addEventListener('input',function(){entry.extraHrs=this.value===''?0:Math.max(0,parseFloat(this.value)||0);entry.extraManual=true;var a=sc.querySelector('#extraAmt');if(a)a.textContent=extra()>0?'+'+fmtMoney(extra()):'';refreshNet();});
     var xa=sc.querySelector('#xtAuto');if(xa)xa.addEventListener('click',function(){delete entry.extraManual;entry.extraHrs=calExtraHours(empId,state.week);paint();});
@@ -2287,6 +2296,19 @@ function drawNombresImage(cb){
     x.fillStyle='#9b917f';x.font='500 13px Arial';x.textBaseline='alphabetic';x.fillText('Rol '+fmtRange(state.week),pad,H-pad);
     cb(cv);
   });
+}
+function shareCanvasToEmp(cv,fname,title,emp,caption){
+  cv.toBlob(function(blob){
+    if(!blob){toast('No se pudo generar la imagen');return;}
+    var file=new File([blob],fname,{type:'image/png'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      navigator.share({files:[file],title:title,text:caption||title}).catch(function(){});
+    }else{
+      var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
+      if(emp&&waDigits(emp)){toast('Imagen descargada — te abro su chat para adjuntarla');waSend(emp,caption||title);}
+      else toast('Imagen descargada');
+    }
+  },'image/png');
 }
 function shareCanvas(cv,fname,title){
   fname=fname||('rol-'+iso(state.week)+'.png');title=title||('Rol '+fmtRange(state.week));
@@ -2928,6 +2950,42 @@ function importChecadorFile(file){
   rd.onload=function(){try{var parsed=parseChecadorCSV(String(rd.result));if(!parsed.blocks.length){toast('No se reconoció el archivo');return;}openChecadorReview(analyzeChecador(parsed,10));}catch(e){toast('Error al leer el archivo');}};
   rd.onerror=function(){toast('No se pudo leer el archivo');};
   rd.readAsText(file);
+}
+
+function waDigits(emp){var d=(emp&&emp.wa)?(''+emp.wa).replace(/\D/g,''):'';if(!d)return '';if(d.length===10)d='52'+d;if(d.length===12&&d.slice(0,2)==='52')return d;return d;}
+function waSend(emp,text){var d=waDigits(emp);if(d){var url='https://wa.me/'+d+'?text='+encodeURIComponent(text);try{window.open(url,'_blank');}catch(e){location.href=url;}}else{shareText(text,'Mensaje');toast('Sin WhatsApp en la ficha — copiado');}}
+function empWeekText(emp,mon){mon=mon||state.week;applyRolesForWeek(mon);
+  var WDL=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+  var lines=['*'+emp.name+'* — tu horario','_Semana '+fmtRange(mon)+'_',''];
+  for(var d=0;d<7;d++){
+    var du=effDuty(emp,d,mon),lbl;
+    if(du.st==='custom')lbl='de '+min2hm(hm2min(du.custom.s))+' a '+min2hm((hm2min(du.custom.s)+customMin({custom:du.custom}).dur)%1440);
+    else if(du.st==='work')lbl=(du.turno==='AM')?'Mañana (8:00–16:00)':'Tarde (16:00–24:00)';
+    else if(du.st==='medio')lbl=medioLabel(du,false);
+    else if(du.st==='cortado')lbl='Turno cortado';
+    else if(du.st==='rest')lbl='Descanso';
+    else if(du.st==='closed')lbl='Cerrado';
+    else lbl='—';
+    var area=(du.area&&AREAS[du.area])?(' · '+AREAS[du.area].short):'';
+    if(du.st==='rest'||du.st==='closed'||du.st==='off')area='';
+    lines.push('• '+WDL[d]+': '+lbl+area+(du.xt&&du.xt.h?(' (+'+du.xt.h+'h extra)'):''));
+  }
+  lines.push('','Cualquier duda me avisas. ¡Gracias!');
+  return lines.join('\n');
+}
+function empPayText(emp,mon){mon=mon||state.week;
+  var ded=deductions(emp,mon),extra=extraPay(emp,mon),base=basePay(emp,mon),net=netPay(emp,mon);
+  var L=['*'+emp.name+'* — tu nómina','_Semana '+fmtRange(mon)+'_',''];
+  L.push('Sueldo base: '+fmtMoney(base));
+  if(extra>0)L.push('Horas extra: '+fmtMoney(extra));
+  if(ded.retN)L.push('Retardos ('+ded.retN+'): -'+fmtMoney(ded.retardo));
+  if(ded.fN)L.push('Faltas ('+ded.fN+'): -'+fmtMoney(ded.falta));
+  if(ded.fiN)L.push('Faltas injustificadas ('+ded.fiN+'): -'+fmtMoney(ded.faltaInj));
+  if(ded.menosHrs)L.push('Horas no trabajadas: -'+fmtMoney(ded.menosHrs));
+  if(ded.otro)L.push('Otros descuentos: -'+fmtMoney(ded.otro));
+  if(ded.abono)L.push('Abono a préstamo: -'+fmtMoney(ded.abono));
+  L.push('','*Neto a recibir: '+fmtMoney(net)+'*');
+  return L.join('\n');
 }
 
 /* ---------- resumen en texto ---------- */
