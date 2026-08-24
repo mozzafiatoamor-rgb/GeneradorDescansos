@@ -155,7 +155,8 @@ h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em}
 #pvJump{position:relative;cursor:pointer}#pvJump #pvDate{position:absolute;inset:0;opacity:0;width:100%;height:100%;border:0;cursor:pointer}.pvtoday{text-align:center;margin:-2px 0 8px}
 .rcturno{font-size:11px;font-weight:800;color:#9a958a;text-transform:uppercase;margin:6px 0 2px}.rdwrap{margin:2px 0 8px}.rdlist{display:flex;flex-direction:column;gap:4px;background:#FAF8F3;border-radius:9px;padding:8px}.rdl{font-size:12px;color:#5a5346}.rdl.ok b{color:#2c2114}.rdl.cov{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.rdl.cov select{border:1px solid #E7C9A8;border-radius:8px;padding:5px 6px;font-size:12px;background:#fff;color:#2c2114}.covnote{font-size:11px;color:#9A5B1A;font-weight:700}
 .impchk{margin:8px 0}.impchk .btn{width:100%}.chkemp{background:#fff;border:1px solid #EAE3D5;border-radius:12px;padding:10px 12px;margin-bottom:8px}.chkname{font-weight:800;color:#2c2114;margin-bottom:6px}.chkname small{color:#9a958a;font-weight:600}.chkrow{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:14px;color:#3D2B1A;cursor:pointer}.chkrow input{width:18px;height:18px}
-.chkgrp{margin:4px 0 8px}.chkgt{font-size:12px;font-weight:800;color:#5a5346;margin:4px 0 2px;display:flex;align-items:center;gap:6px}.chkinfo{font-size:10px;font-weight:700;color:#9a8a6a;background:#F3ECDD;border-radius:6px;padding:2px 6px}.chknote{font-size:12px;color:#7a6f5a;padding:3px 0 3px 4px}.chkok{font-size:12.5px;color:#1E7D74;font-weight:700}.chkwarn{background:#FBEbe6;border:1px solid #F1C9BD;color:#9A331C;border-radius:10px;padding:8px 10px;font-size:12.5px;margin-bottom:8px}.daychips button.lockday{opacity:.9;cursor:default}
+.chkgrp{margin:4px 0 8px}.chkgt{font-size:12px;font-weight:800;color:#5a5346;margin:4px 0 2px;display:flex;align-items:center;gap:6px}.chkinfo{font-size:10px;font-weight:700;color:#9a8a6a;background:#F3ECDD;border-radius:6px;padding:2px 6px}.chknote{font-size:12px;color:#7a6f5a;padding:3px 0 3px 4px}.chkok{font-size:12.5px;color:#1E7D74;font-weight:700}.chkwarn{background:#FBEbe6;border:1px solid #F1C9BD;color:#9A331C;border-radius:10px;padding:8px 10px;font-size:12.5px;margin-bottom:8px}
+.chkfalta{margin-bottom:6px}.fseg{display:flex;gap:6px;margin:2px 0 4px 26px}.fsegb{border:1px solid #E7C9A8;background:#fff;color:#8a6a3a;border-radius:8px;padding:4px 10px;font-size:11.5px;font-weight:700;cursor:pointer}.fsegb.on{background:#C0344B;color:#fff;border-color:#C0344B}.fsegb.on[data-k='just']{background:#1E7D74;border-color:#1E7D74}.daychips button.lockday{opacity:.9;cursor:default}
 .loanhist{margin:8px 0;border-top:1px dashed #E0D9CB;padding-top:6px}.loanhist .lhh{font-size:11px;font-weight:700;color:#5a5346;margin-bottom:4px}.lpitem{display:flex;align-items:center;gap:8px;font-size:12px;padding:3px 0}.lpitem .lpw{flex:1;color:#5a5346}.lpitem .lpm{font-weight:700;font-variant-numeric:tabular-nums}.lpedit{border:0;background:none;color:#186B62;font-size:13px;padding:2px 4px}.lpitem .rm{border:0;background:none;color:#9A331C;font-size:15px;padding:0 4px}.lptot{font-size:11.5px;color:#5a5346;margin-top:5px;border-top:1px solid #EEE9DE;padding-top:5px}.lptot b{color:#1E7D74}.linkbtn.sm{font-size:10px;padding:2px 0;margin-top:2px;color:#186B62;background:none;border:0;text-decoration:underline}.hcol .scs{font-size:9.5px;color:#8a8275;margin-top:3px}.paidtoggle{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:12px 14px;background:#F1F7F2;border:1px solid #CFE6D4;border-radius:12px;font-weight:700;color:#1f6b46}.paidtag{display:inline-block;background:#1E7D74;color:#fff;font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle}.nomrow.paid{background:#F4FAF5}.paidcount{font-size:12.5px;color:#5a5346;margin-top:6px}.paidcount b{color:#1E7D74}
 .bakstatus{font-size:12px;font-weight:600;padding:9px 11px;border-radius:10px;margin-bottom:10px;line-height:1.35}.bakstatus.ok{background:#EEF7F0;color:#1f6b46;border:1px solid #CFE6D4}.bakstatus.warn{background:#FDF3E7;color:#8a5a12;border:1px solid #F0DDBB}.bakstatus.bad{background:#FCEDEA;color:#9A331C;border:1px solid #F0C9BE}
 .btn.wide{display:block;width:100%;text-align:center;margin-bottom:8px}.btn[disabled]{opacity:.5;pointer-events:none}.divider{height:1px;background:var(--line,#E7E1D5);margin:6px 0 12px}
@@ -3013,7 +3014,7 @@ function analyzeChecador(parsed,tol){
       var rec=b.days[dateKey];
       var expH=hoursOfObj(effStatus(emp.id,mon,d)),expStart=expectedStartMin(emp,d,mon);
       if(!rec||!rec.hasRecord){faltas.push(d);continue;}
-      if(rec.inMin!=null&&rec.inMin>expStart+tol){retardos.push({d:d,mins:rec.inMin-expStart});}
+      if(rec.inMin!=null&&rec.inMin>expStart+tol){retardos.push({d:d,mins:rec.inMin-expStart,exp:expStart,inn:rec.inMin});}
       // no marcó salida: incidencia aparte, NO se descuenta como horas
       if(!rec.hasOut||rec.workedMin<=0){sinSalida.push(d);continue;}
       var shMin=expH*60-rec.workedMin;
@@ -3034,9 +3035,10 @@ function openChecadorReview(analysis){
     html+='<div class="chkemp"><div class="chkname">'+esc(r.emp.name)+' <small>('+esc(r.clockName)+')</small></div>';
     if(!any){html+='<div class="chkok">Sin incidencias ✓</div></div>';return;}
     if(r.faltas.length){html+='<div class="chkgrp"><div class="chkgt" style="color:#C0344B">Faltas</div>';
-      r.faltas.forEach(function(d){html+='<label class="chkrow"><input type="checkbox" checked data-ap="'+ri+'-falta-'+d+'"><span>'+WDF[d]+' — no checó</span></label>';});html+='</div>';}
+      r.faltas.forEach(function(d){html+='<div class="chkfalta"><label class="chkrow"><input type="checkbox" checked data-ap="'+ri+'-falta-'+d+'"><span>'+WDF[d]+' — no checó</span></label>'+
+        '<div class="fseg"><button class="fsegb on" data-fj="'+ri+'-'+d+'" data-k="just">Justificada</button><button class="fsegb" data-fj="'+ri+'-'+d+'" data-k="inj">Injustificada</button></div></div>';});html+='</div>';}
     if(r.retardos.length){html+='<div class="chkgrp"><div class="chkgt" style="color:#8A5A12">Retardos</div>';
-      r.retardos.forEach(function(o){html+='<label class="chkrow"><input type="checkbox" checked data-ap="'+ri+'-retardo-'+o.d+'"><span>'+WDF[o.d]+' — '+o.mins+' min tarde</span></label>';});html+='</div>';}
+      r.retardos.forEach(function(o){html+='<label class="chkrow"><input type="checkbox" checked data-ap="'+ri+'-retardo-'+o.d+'"><span>'+WDF[o.d]+' — entra '+min2hm(o.exp)+', marcó '+min2hm(o.inn)+' · <b>'+o.mins+' min tarde</b></span></label>';});html+='</div>';}
     if(r.shortH>0){html+='<div class="chkgrp"><div class="chkgt">Horas no trabajadas</div>';
       html+='<label class="chkrow"><input type="checkbox" checked data-ap="'+ri+'-short"><span><b>'+r.shortH+' h</b>'+(r.shortDays.length?(' ('+r.shortDays.map(function(d){return WDF[d];}).join(', ')+')'):'')+'</span></label></div>';}
     if(r.sinSalida.length){html+='<div class="chkgrp"><div class="chkgt" style="color:#7A6040">No marcó salida <span class="chkinfo">revisar — no se descuenta solo</span></div>';
@@ -3048,15 +3050,18 @@ function openChecadorReview(analysis){
   html+='<div class="sheetfoot"><button class="btn primary" id="chkApply">Aplicar seleccionados</button></div></div>';
   openSheet(html);
   var crb=sc.querySelector('#chkReport');if(crb)crb.addEventListener('click',function(){toast('Generando reporte…');drawChecadorReport(analysis,WDF,mon,function(cv){shareCanvas(cv,'asistencia-'+iso(mon)+'.png','Asistencia (checador) '+fmtRange(mon));});});
+  var faltaKind={};
+  sc.querySelectorAll('.fsegb').forEach(function(b){b.addEventListener('click',function(){var key=b.getAttribute('data-fj');faltaKind[key]=b.getAttribute('data-k');
+    sc.querySelectorAll('.fsegb[data-fj="'+key+'"]').forEach(function(x){x.classList.toggle('on',x===b);});});});
   sc.querySelector('#chkApply').addEventListener('click',function(){
     var k=weekKey(mon),n=0;if(!payroll[k])payroll[k]={};
     analysis.rows.forEach(function(r,ri){
       var ent=payroll[k][r.emp.id]||{faltas:0,faltasInj:0,retardos:0,otros:[],abono:null,dias:null,horas:null,paid:false};
       ent.days=ent.days||{};
-      r.faltas.forEach(function(d){if(sc.querySelector('[data-ap="'+ri+'-falta-'+d+'"]:checked')){ent.days[d]='falta';n++;}});
+      r.faltas.forEach(function(d){if(sc.querySelector('[data-ap="'+ri+'-falta-'+d+'"]:checked')){ent.days[d]=(faltaKind[ri+'-'+d]==='inj')?'faltaInj':'falta';n++;}});
       r.retardos.forEach(function(o){if(sc.querySelector('[data-ap="'+ri+'-retardo-'+o.d+'"]:checked')){if(ent.days[o.d]!=='falta'&&ent.days[o.d]!=='faltaInj')ent.days[o.d]='retardo';n++;}});
       if(r.shortH>0&&sc.querySelector('[data-ap="'+ri+'-short"]:checked')){ent.menosHrs=(ent.menosHrs||0)+r.shortH;n++;}
-      var cF=0,cR=0;for(var d2=0;d2<7;d2++){if(ent.days[d2]==='falta')cF++;else if(ent.days[d2]==='retardo')cR++;}ent.faltas=cF;ent.retardos=cR;
+      var cF=0,cR=0,cFi=0;for(var d2=0;d2<7;d2++){if(ent.days[d2]==='falta')cF++;else if(ent.days[d2]==='faltaInj')cFi++;else if(ent.days[d2]==='retardo')cR++;}ent.faltas=cF;ent.faltasInj=cFi;ent.retardos=cR;
       payroll[k][r.emp.id]=ent;
     });
     save();closeSheet();state.week=mon;setTab('nomina');toast(n+' cambios aplicados');
