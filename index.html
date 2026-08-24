@@ -2368,22 +2368,30 @@ function shareCanvasToEmp(cv,fname,title,emp,caption){
     }
   },'image/png');
 }
-function drawChecadorReport(analysis,WDF,mon,cb){
-  // recolecta lo que quedó MARCADO en la hoja
+function drawChecadorReport(analysis,WDF,mon,faltaKind,cb){
+  faltaKind=faltaKind||{};
   var items=[];
   analysis.rows.forEach(function(r,ri){
-    var fal=[],ret=[],sh=null,sinS=[];
-    r.faltas.forEach(function(d){if(sc.querySelector('[data-ap="'+ri+'-falta-'+d+'"]:checked'))fal.push(WDF[d]);});
-    r.retardos.forEach(function(o){if(sc.querySelector('[data-ap="'+ri+'-retardo-'+o.d+'"]:checked'))ret.push(WDF[o.d]+' ('+o.mins+'m)');});
-    if(r.shortH>0&&sc.querySelector('[data-ap="'+ri+'-short"]:checked'))sh=r.shortH+' h'+(r.shortDays.length?(' ('+r.shortDays.map(function(d){return WDF[d];}).join(', ')+')'):'');
-    (r.sinSalida||[]).forEach(function(d){sinS.push(WDF[d]);});
-    if(fal.length||ret.length||sh||sinS.length)items.push({name:r.emp.name,fal:fal,ret:ret,sh:sh,sinS:sinS});
+    var lines=[];
+    r.faltas.forEach(function(d){if(sc.querySelector('[data-ap="'+ri+'-falta-'+d+'"]:checked')){var inj=faltaKind[ri+'-'+d]==='inj';lines.push({c:'#C0344B',lbl:'Falta',txt:WDF[d]+' — no checó'+(inj?' · INJUSTIFICADA':' · justificada')});}});
+    r.retardos.forEach(function(o){if(sc.querySelector('[data-ap="'+ri+'-retardo-'+o.d+'"]:checked'))lines.push({c:'#8A5A12',lbl:'Retardo',txt:WDF[o.d]+' — entra '+min2hm(o.exp)+', marcó '+min2hm(o.inn)+' · '+o.eff+' min tarde ('+o.mins+'−'+o.tol+' tol.)'});});
+    if(r.shortH>0&&sc.querySelector('[data-ap="'+ri+'-short"]:checked'))lines.push({c:'#5a5346',lbl:'Horas no trab.',txt:r.shortH+' h'+(r.shortDays.length?(' ('+r.shortDays.map(function(d){return WDF[d];}).join(', ')+')'):'')});
+    (r.sinSalida||[]).forEach(function(d){lines.push({c:'#7A6040',lbl:'Sin salida',txt:WDF[d]+' — falta la salida (revisar)'});});
+    if(lines.length)items.push({name:r.emp.name,lines:lines});
   });
-  var scale=3,W=1000,pad=44,headH=150;
-  var lineH=22,blockGap=14;
-  var bodyH=0;items.forEach(function(it){var l=1;if(it.fal.length)l++;if(it.ret.length)l++;if(it.sh)l++;if(it.sinS.length)l++;bodyH+=l*lineH+blockGap;});
+  var scale=3,pad=44,headH=150,nameH=26,lineH=24,blockGap=12;
+  var mctx=document.createElement('canvas').getContext('2d');
+  function mw(font,txt){mctx.font=font;return mctx.measureText(txt||'').width;}
+  var need=0;
+  need=Math.max(need,140+mw('700 22px Arial','Reporte de asistencia'));
+  need=Math.max(need,140+mw('500 15px Arial','Semana '+fmtRange(mon)+' · según el reloj checador'));
+  items.forEach(function(it){need=Math.max(need,mw('800 16px Arial',it.name));it.lines.forEach(function(L){need=Math.max(need,150+mw('500 13px Arial',L.txt));});});
+  need=Math.max(need,mw('500 12px Arial','Descuentos según el reglamento. "Sin salida" se revisa, no se descuenta solo.'));
+  var iw=Math.max(360,Math.ceil(need)+12);
+  var W=Math.min(1160,iw+pad*2+56);iw=W-pad*2-56;
+  var bodyH=0;items.forEach(function(it){bodyH+=nameH+it.lines.length*lineH+blockGap;});
   if(!items.length)bodyH=lineH*2;
-  var H=pad+headH+40+bodyH+70+pad;
+  var H=pad+headH+40+bodyH+64+pad;
   var cv=document.createElement('canvas');cv.width=W*scale;cv.height=H*scale;
   var x=cv.getContext('2d');x.scale(scale,scale);
   x.fillStyle='#F0E9DC';x.fillRect(0,0,W,H);
@@ -2396,19 +2404,19 @@ function drawChecadorReport(analysis,WDF,mon,cb){
     else{x.fillStyle='#fff';x.font='700 16px Arial';x.textBaseline='middle';x.fillText('Mozzafiato',ix+12,y+27);}
     x.textBaseline='alphabetic';x.fillStyle='#3D2B1A';x.font='700 22px Arial';x.fillText('Reporte de asistencia',ix+140,y+24);
     x.fillStyle='#7A6040';x.font='500 15px Arial';x.fillText('Semana '+fmtRange(mon)+' · según el reloj checador',ix+140,y+46);
-    y+=84;x.strokeStyle='#EAE3D5';x.lineWidth=1.5;x.beginPath();x.moveTo(ix,y);x.lineTo(ix+iw,y);x.stroke();y+=18;
+    y+=84;x.strokeStyle='#EAE3D5';x.lineWidth=1.5;x.beginPath();x.moveTo(ix,y);x.lineTo(ix+iw,y);x.stroke();y+=16;
     if(!items.length){x.fillStyle='#1E7D74';x.font='700 16px Arial';x.textBaseline='middle';x.fillText('Sin incidencias esta semana ✓',ix,y+10);y+=lineH;}
     items.forEach(function(it){
-      x.fillStyle='#2c2114';x.font='800 16px Arial';x.textBaseline='middle';x.textAlign='left';x.fillText(it.name,ix,y+8);y+=lineH;
-      function ln(lbl,val,col){x.fillStyle=col;x.font='700 13px Arial';x.fillText(lbl,ix+14,y+8);x.fillStyle='#3D2B1A';x.font='500 13px Arial';x.fillText(val,ix+150,y+8);y+=lineH;}
-      if(it.fal.length)ln('Faltas','• '+it.fal.join(', '),'#C0344B');
-      if(it.ret.length)ln('Retardos','• '+it.ret.join(', '),'#8A5A12');
-      if(it.sh)ln('Horas no trab.','• '+it.sh,'#5a5346');
-      if(it.sinS.length)ln('Sin salida','• '+it.sinS.join(', ')+' (revisar)','#7A6040');
+      x.fillStyle='#2c2114';x.font='800 16px Arial';x.textBaseline='middle';x.textAlign='left';x.fillText(it.name,ix,y+nameH/2);y+=nameH;
+      it.lines.forEach(function(L){
+        x.fillStyle=L.c;x.font='700 12.5px Arial';x.fillText(L.lbl,ix+14,y+lineH/2);
+        x.fillStyle='#3D2B1A';x.font='500 13px Arial';x.fillText(L.txt,ix+150,y+lineH/2);
+        y+=lineH;
+      });
       y+=blockGap-6;x.strokeStyle='#F2ECE0';x.beginPath();x.moveTo(ix,y-6);x.lineTo(ix+iw,y-6);x.stroke();
     });
-    y+=6;x.fillStyle='#8a8275';x.font='500 12px Arial';x.textBaseline='middle';x.textAlign='left';
-    x.fillText('Retardos y faltas se descuentan según el reglamento. "Sin salida" se revisa, no se descuenta solo.',ix,y+8);
+    y+=8;x.fillStyle='#8a8275';x.font='500 12px Arial';x.textBaseline='middle';x.textAlign='left';
+    x.fillText('Descuentos según el reglamento. "Sin salida" se revisa, no se descuenta solo.',ix,y+6);
     cb(cv);
   });
 }
@@ -3014,7 +3022,7 @@ function analyzeChecador(parsed,tol){
       var rec=b.days[dateKey];
       var expH=hoursOfObj(effStatus(emp.id,mon,d)),expStart=expectedStartMin(emp,d,mon);
       if(!rec||!rec.hasRecord){faltas.push(d);continue;}
-      if(rec.inMin!=null&&rec.inMin>expStart+tol){retardos.push({d:d,mins:rec.inMin-expStart,exp:expStart,inn:rec.inMin});}
+      if(rec.inMin!=null&&rec.inMin>expStart+tol){retardos.push({d:d,mins:rec.inMin-expStart,eff:Math.max(0,(rec.inMin-expStart)-tol),tol:tol,exp:expStart,inn:rec.inMin});}
       // no marcó salida: incidencia aparte, NO se descuenta como horas
       if(!rec.hasOut||rec.workedMin<=0){sinSalida.push(d);continue;}
       var shMin=expH*60-rec.workedMin;
@@ -3038,7 +3046,7 @@ function openChecadorReview(analysis){
       r.faltas.forEach(function(d){html+='<div class="chkfalta"><label class="chkrow"><input type="checkbox" checked data-ap="'+ri+'-falta-'+d+'"><span>'+WDF[d]+' — no checó</span></label>'+
         '<div class="fseg"><button class="fsegb on" data-fj="'+ri+'-'+d+'" data-k="just">Justificada</button><button class="fsegb" data-fj="'+ri+'-'+d+'" data-k="inj">Injustificada</button></div></div>';});html+='</div>';}
     if(r.retardos.length){html+='<div class="chkgrp"><div class="chkgt" style="color:#8A5A12">Retardos</div>';
-      r.retardos.forEach(function(o){html+='<label class="chkrow"><input type="checkbox" checked data-ap="'+ri+'-retardo-'+o.d+'"><span>'+WDF[o.d]+' — entra '+min2hm(o.exp)+', marcó '+min2hm(o.inn)+' · <b>'+o.mins+' min tarde</b></span></label>';});html+='</div>';}
+      r.retardos.forEach(function(o){html+='<label class="chkrow"><input type="checkbox" checked data-ap="'+ri+'-retardo-'+o.d+'"><span>'+WDF[o.d]+' — entra '+min2hm(o.exp)+', marcó '+min2hm(o.inn)+' · <b>'+o.eff+' min tarde</b> <span class="chkinfo">'+o.mins+' min − '+o.tol+' tol.</span></span></label>';});html+='</div>';}
     if(r.shortH>0){html+='<div class="chkgrp"><div class="chkgt">Horas no trabajadas</div>';
       html+='<label class="chkrow"><input type="checkbox" checked data-ap="'+ri+'-short"><span><b>'+r.shortH+' h</b>'+(r.shortDays.length?(' ('+r.shortDays.map(function(d){return WDF[d];}).join(', ')+')'):'')+'</span></label></div>';}
     if(r.sinSalida.length){html+='<div class="chkgrp"><div class="chkgt" style="color:#7A6040">No marcó salida <span class="chkinfo">revisar — no se descuenta solo</span></div>';
@@ -3049,8 +3057,8 @@ function openChecadorReview(analysis){
   html+='<div class="tipacts" style="margin-bottom:10px"><button class="btn ghost" id="chkReport">📸 Reporte para el grupo</button></div>';
   html+='<div class="sheetfoot"><button class="btn primary" id="chkApply">Aplicar seleccionados</button></div></div>';
   openSheet(html);
-  var crb=sc.querySelector('#chkReport');if(crb)crb.addEventListener('click',function(){toast('Generando reporte…');drawChecadorReport(analysis,WDF,mon,function(cv){shareCanvas(cv,'asistencia-'+iso(mon)+'.png','Asistencia (checador) '+fmtRange(mon));});});
   var faltaKind={};
+  var crb=sc.querySelector('#chkReport');if(crb)crb.addEventListener('click',function(){toast('Generando reporte…');drawChecadorReport(analysis,WDF,mon,faltaKind,function(cv){shareCanvas(cv,'asistencia-'+iso(mon)+'.png','Asistencia (checador) '+fmtRange(mon));});});
   sc.querySelectorAll('.fsegb').forEach(function(b){b.addEventListener('click',function(){var key=b.getAttribute('data-fj');faltaKind[key]=b.getAttribute('data-k');
     sc.querySelectorAll('.fsegb[data-fj="'+key+'"]').forEach(function(x){x.classList.toggle('on',x===b);});});});
   sc.querySelector('#chkApply').addEventListener('click',function(){
