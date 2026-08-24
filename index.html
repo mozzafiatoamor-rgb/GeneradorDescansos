@@ -1138,7 +1138,7 @@ function openCellSheet(empId,dayIdx){
   function slotsAM(sl){return XSLOTS[sl]&&XSLOTS[sl].turno==='AM';}
   function amFrom(){return chosen.slots.some(slotsAM);}
   function pmFrom(){return chosen.slots.some(function(s){return !slotsAM(s);});}
-  function updCHint(){var el2=sc.querySelector('#cHint');if(!el2)return;var h=Math.max(0,(hm2min(chosen.ce)-hm2min(chosen.cs))/60);el2.textContent=h>0?('Total: '+(h%1?h.toFixed(2):h)+' h — se calculan solas en nómina y propinas.'):'La salida debe ser después de la entrada.';}
+  function updCHint(){var el2=sc.querySelector('#cHint');if(!el2)return;var dur=((hm2min(chosen.ce)-hm2min(chosen.cs))+1440)%1440,h=dur/60;el2.textContent=h>0?('Total: '+(h%1?h.toFixed(2):h)+' h — se calculan solas en nómina y propinas.'):'La salida no puede ser igual a la entrada.';}
   function syncGroups(){
     sc.querySelector('#coverGroup').style.display=chosen.st==='rest'?'block':'none';
     sc.querySelector('#medioGroup').style.display=chosen.st==='medio'?'block':'none';
@@ -1194,7 +1194,7 @@ function openCellSheet(empId,dayIdx){
     if(chosen.st!=='rest')chosen.cover=null;
     var days=targetDays(),plural=days.length>1;
     if(chosen.st==='custom'){
-      if(hm2min(chosen.ce)<=hm2min(chosen.cs)){toast('La salida debe ser después de la entrada');return;}
+      if((((hm2min(chosen.ce)-hm2min(chosen.cs))+1440)%1440)===0){toast('La salida no puede ser igual a la entrada');return;}
       var oc={st:'work',cover:null,custom:{s:chosen.cs,e:chosen.ce}};
       if(chosen.area&&chosen.area!==emp.area)oc.area=chosen.area;
       if(chosen.task)oc.task=chosen.task;
@@ -1469,11 +1469,12 @@ function payAt(emp,mon){
 function payType(emp,mon){return payAt(emp,mon||state.week).type||'diario';}
 function payRate(emp,mon){return payAt(emp,mon||state.week).rate||0;}
 function valorDia(emp,mon){var p=payAt(emp,mon||state.week),t=p.type,r=p.rate||0;return t==='diario'?r:t==='semanal'?r/6:8*r;}
-function unitOfObj(o){if(!o)return 0;if(o.custom)return Math.max(0,(hm2min(o.custom.e)-hm2min(o.custom.s))/60)/8;if(o.st==='work'||o.st==='cortado')return 1;if(o.st==='medio'){var u=(o.am?0.5:0)+(o.pm?0.5:0);return u||0.5;}return 0;}
+function unitOfObj(o){if(!o)return 0;if(o.custom)return customMin(o).dur/60/8;if(o.st==='work'||o.st==='cortado')return 1;if(o.st==='medio'){var u=(o.am?0.5:0)+(o.pm?0.5:0);return u||0.5;}return 0;}
 function hm2min(s){if(!s)return 0;var p=(''+s).split(':');return (+p[0])*60+(+(p[1]||0));}
 function min2hm(m){var h=Math.floor(m/60),mm=m%60;var ap=h<12?'a.m.':(h<24?'p.m.':'a.m.');var h12=h%12;if(h12===0)h12=12;return h12+(mm?(':'+(mm<10?'0':'')+mm):':00')+' '+ap;}
-function customLabel(o,short){if(!o||!o.custom)return '';var s=hm2min(o.custom.s),e=hm2min(o.custom.e);function sh(m){var h=Math.floor(m/60),mm=m%60;return h+(mm?(':'+(mm<10?'0':'')+mm):'');}return sh(s)+'–'+sh(e);}
-function hoursOfObj(o){if(!o)return 0;if(o.custom)return Math.max(0,(hm2min(o.custom.e)-hm2min(o.custom.s))/60);if(o.st==='work'||o.st==='cortado')return 8;if(o.st==='medio'){var h=(o.am?4:0)+(o.pm?4:0);return h||4;}return 0;}
+function customMin(o){if(!o||!o.custom)return {s:0,e:0,dur:0};var s=hm2min(o.custom.s),e=hm2min(o.custom.e);var dur=((e-s)+1440)%1440;return {s:s,e:e,dur:dur};}
+function customLabel(o,short){if(!o||!o.custom)return '';var cm=customMin(o);function sh(m){var h=Math.floor(m/60),mm=m%60;return h+(mm?(':'+(mm<10?'0':'')+mm):'');}return sh(cm.s)+'–'+sh(cm.s+cm.dur);}
+function hoursOfObj(o){if(!o)return 0;if(o.custom)return customMin(o).dur/60;if(o.st==='work'||o.st==='cortado')return 8;if(o.st==='medio'){var h=(o.am?4:0)+(o.pm?4:0);return h||4;}return 0;}
 function workedDays(empId,mon){var n=0;for(var d=0;d<7;d++)n+=unitOfObj(effStatus(empId,mon,d));return n;}
 function workedHours(empId,mon){var h=0;for(var d=0;d<7;d++)h+=hoursOfObj(effStatus(empId,mon,d));return h;}
 function payEntry(empId,mon){var w=payroll[weekKey(mon)];return (w&&w[empId])||null;}
