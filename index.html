@@ -3039,6 +3039,8 @@ function openChecadorReview(analysis,parsed){
   var WDF=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'],mon=analysis.mon;
   var html='<div class="shead"><div class="t">Revisar checadas</div><div class="s">Semana '+fmtRange(mon)+'</div></div><div class="sbody">';
   html+='<div class="hint" style="margin-bottom:8px">Desmarca lo que NO quieras aplicar. Lo marcado se guardará en la nómina.</div>';
+  if(weekKey(mon)!==weekKey(state.week))html+='<div class="chkwarn">⚠️ Este archivo es de la semana <b>'+fmtRange(mon)+'</b>, distinta a la que tenías abierta ('+fmtRange(state.week)+'). Al aplicar se guardará en la semana del archivo. Si no era este archivo, cierra sin aplicar.</div>';
+  if(chk[weekKey(mon)])html+='<div class="chkwarn">Ya hay checadas guardadas de esta semana; al aplicar se <b>reemplazarán</b>.</div>';
   if(analysis.unmatched.length)html+='<div class="chkwarn">Sin emparejar (pon su número de reloj en la ficha): '+esc(analysis.unmatched.join(', '))+'</div>';
   if(!analysis.rows.length)html+='<div class="empty">No se encontraron coincidencias.</div>';
   analysis.rows.forEach(function(r,ri){
@@ -3116,7 +3118,15 @@ function openChecadorHistory(k){
 }
 function importChecadorFile(file){
   var rd=new FileReader();
-  rd.onload=function(){try{var parsed=parseChecadorCSV(String(rd.result));if(!parsed.blocks.length){toast('No se reconoció el archivo');return;}openChecadorReview(analyzeChecador(parsed,retTol()),parsed);}catch(e){toast('Error al leer el archivo');}};
+  rd.onload=function(){try{
+    var parsed=parseChecadorCSV(String(rd.result));
+    if(!parsed.blocks.length){toast('No se reconoció el archivo del reloj');return;}
+    var ps=parsed.periodStart||'';
+    if(!/^\d{8}$/.test(ps)){toast('El archivo no trae la fecha del periodo. ¿Seguro es el archivo del reloj?');return;}
+    var dt=new Date(+ps.slice(0,4),+ps.slice(4,6)-1,+ps.slice(6,8));
+    if(isNaN(dt.getTime())){toast('La fecha del periodo en el archivo no es válida.');return;}
+    openChecadorReview(analyzeChecador(parsed,retTol()),parsed);
+  }catch(e){toast('Error al leer el archivo');}};
   rd.onerror=function(){toast('No se pudo leer el archivo');};
   rd.readAsText(file);
 }
