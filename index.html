@@ -487,6 +487,41 @@ h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em}
         <label class="swt"><input type="checkbox" id="ruleMinRest"><span></span></label></div>
     </div>
 
+    </div>
+
+    <div class="setcard">
+      <div class="sh">Horas de entrada</div>
+      <div class="hint" style="margin-bottom:8px">Contra esta hora se mide el retardo. El horario exacto por día (si lo pones) manda sobre esto.</div>
+      <div class="setrow"><div class="tx"><b>Mañana · normal</b></div><div class="ctl"><input class="field sm" id="enAm" type="time" step="300" style="width:120px"></div></div>
+      <div class="setrow"><div class="tx"><b>Mañana · encargado</b></div><div class="ctl"><input class="field sm" id="enMgrAm" type="time" step="300" style="width:120px"></div></div>
+      <div class="setrow"><div class="tx"><b>Tarde · normal</b></div><div class="ctl"><input class="field sm" id="enPm" type="time" step="300" style="width:120px"></div></div>
+      <div class="setrow"><div class="tx"><b>Tarde · encargado</b></div><div class="ctl"><input class="field sm" id="enMgrPm" type="time" step="300" style="width:120px"></div></div>
+    </div>
+
+    <div class="setcard">
+      <div class="sh">Reglas de la empresa (nómina)</div>
+      <div class="hint" style="margin-bottom:8px">Descuentos que aplica la empresa en la nómina.</div>
+      <div class="setrow"><div class="tx"><b>Tolerancia de retardo</b><small>Minutos de gracia (se usa al importar el checador).</small></div>
+        <div class="ctl"><input class="field sm" id="empTol" type="number" inputmode="numeric" min="0" step="1" style="width:80px;text-align:right"> min</div></div>
+      <div class="setrow"><div class="tx"><b>Multa por retardo</b></div>
+        <div class="ctl">$ <input class="field sm" id="empRet" type="number" inputmode="decimal" min="0" step="1" style="width:90px;text-align:right"></div></div>
+      <div class="setrow toggle"><div class="tx"><b>Falta injustificada cuesta doble día</b><small>Además de perder el día, se descuenta otro día.</small></div>
+        <label class="swt"><input type="checkbox" id="empFiDbl"><span></span></label></div>
+      <div class="setrow"><div class="tx"><b>Multa extra por injustificada</b><small>Monto fijo adicional (opcional).</small></div>
+        <div class="ctl">$ <input class="field sm" id="empFi" type="number" inputmode="decimal" min="0" step="1" style="width:90px;text-align:right"></div></div>
+      <div class="setrow toggle"><div class="tx"><b>Descontar también el tiempo tarde</b><small>Además de la multa, descuenta como horas no trabajadas el tiempo faltante (al importar checador).</small></div>
+        <label class="swt"><input type="checkbox" id="empDisc"><span></span></label></div>
+    </div>
+
+    <div class="setcard">
+      <div class="sh">Reglas de propinas</div>
+      <div class="hint" style="margin-bottom:8px">Multas del reglamento de propinas. Se descuentan al multado y se reparten entre los demás.</div>
+      <div class="setrow"><div class="tx"><b>Multa por retardo</b></div>
+        <div class="ctl">$ <input class="field sm" id="tipRet" type="number" inputmode="decimal" min="0" step="1" style="width:90px;text-align:right"></div></div>
+      <div class="setrow"><div class="tx"><b>Multa por falta injustificada</b></div>
+        <div class="ctl">$ <input class="field sm" id="tipFi" type="number" inputmode="decimal" min="0" step="1" style="width:90px;text-align:right"></div></div>
+    </div>
+
     <div class="setcard">
       <div class="sh">Atributos / habilidades</div>
       <div class="hint" style="margin-bottom:8px">Define habilidades (ej. Diligenciero, Barista) y asígnalas a cada empleado en su ficha. Activa "1 por turno" para que avise si falta cobertura.</div>
@@ -605,6 +640,19 @@ function loadData(){
   if(!cfg.biz)cfg.biz=defBiz;
   if(!isObj(cfg.rules))cfg.rules={crew:true,oneRest:false,mgr:false,minRest:true};
   if(cfg.rules.minRest===undefined)cfg.rules.minRest=true;
+  var oldF=isObj(cfg.fines)?cfg.fines:null;
+  if(!isObj(cfg.finesEmp))cfg.finesEmp={retTol:(oldF&&oldF.retTol!=null?oldF.retTol:10),retFine:(oldF&&oldF.retFine!=null?oldF.retFine:50),fiDoubleDay:true,fiFine:0,discTime:(oldF?oldF.discTime!==false:true)};
+  if(cfg.finesEmp.retTol==null)cfg.finesEmp.retTol=10;
+  if(cfg.finesEmp.retFine==null)cfg.finesEmp.retFine=50;
+  if(cfg.finesEmp.fiDoubleDay==null)cfg.finesEmp.fiDoubleDay=true;
+  if(cfg.finesEmp.fiFine==null)cfg.finesEmp.fiFine=0;
+  if(cfg.finesEmp.discTime==null)cfg.finesEmp.discTime=true;
+  if(!isObj(cfg.finesTip))cfg.finesTip={retFine:(oldF&&oldF.retFine!=null?oldF.retFine:50),fiFine:(oldF&&oldF.fiFine!=null?oldF.fiFine:100)};
+  if(cfg.finesTip.retFine==null)cfg.finesTip.retFine=50;
+  if(cfg.finesTip.fiFine==null)cfg.finesTip.fiFine=100;
+  if(!isObj(cfg.entry))cfg.entry={am:'08:00',pm:'15:50',mgrAm:'08:00',mgrPm:'15:40'};
+  if(!cfg.entry.am)cfg.entry.am='08:00';if(!cfg.entry.pm)cfg.entry.pm='15:50';
+  if(!cfg.entry.mgrAm)cfg.entry.mgrAm='08:00';if(!cfg.entry.mgrPm)cfg.entry.mgrPm='15:40';
   if(!Array.isArray(cfg.attrs))cfg.attrs=[{id:'diligencia',name:'Diligenciero (compras/envíos)',rule:true}];
   if(!base){base=generateBase();store.set(K.base,base);}
 }
@@ -1056,6 +1104,14 @@ function renderAjustes(){
   var ro=document.getElementById('ruleOneRest');if(ro)ro.checked=!!R.oneRest;
   var rm=document.getElementById('ruleMgr');if(rm)rm.checked=!!R.mgr;
   var rmr=document.getElementById('ruleMinRest');if(rmr)rmr.checked=!!R.minRest;
+  var E=cfg.entry||{},FE=cfg.finesEmp||{},FT=cfg.finesTip||{};
+  function bindTime(id,key){var el2=document.getElementById(id);if(!el2)return;el2.value=E[key]||'';el2.onchange=function(){cfg.entry[key]=this.value||E[key];save();toast('Guardado');};}
+  bindTime('enAm','am');bindTime('enMgrAm','mgrAm');bindTime('enPm','pm');bindTime('enMgrPm','mgrPm');
+  function bindNum(id,obj,key,dflt){var el2=document.getElementById(id);if(!el2)return;el2.value=(obj[key]!=null?obj[key]:dflt);el2.onchange=function(){obj[key]=Math.max(0,parseFloat(this.value)||0);save();toast('Guardado');};}
+  bindNum('empTol',FE,'retTol',10);bindNum('empRet',FE,'retFine',50);bindNum('empFi',FE,'fiFine',0);
+  bindNum('tipRet',FT,'retFine',50);bindNum('tipFi',FT,'fiFine',100);
+  var efd=document.getElementById('empFiDbl');if(efd){efd.checked=!(FE.fiDoubleDay===false);efd.onchange=function(){cfg.finesEmp.fiDoubleDay=this.checked;save();};}
+  var eds=document.getElementById('empDisc');if(eds){eds.checked=!(FE.discTime===false);eds.onchange=function(){cfg.finesEmp.discTime=this.checked;save();};}
   renderBackupStatus();
   renderBajas();
   renderAttrs();
@@ -1550,8 +1606,8 @@ function valorHora(emp,mon){return valorDia(emp,mon)/8;}
 function deductions(emp,mon){var e=payEntry(emp.id,mon)||{};
   var vd=valorDia(emp,mon),vh=vd/8;
   var f=nFalta(e)*vd;
-  var fi=nFaltaInj(e)*2*vd;
-  var r=nRet(e)*50;
+  var fi=nFaltaInj(e)*(vd*(empFiDouble()?2:1)+empFiFine());
+  var r=nRet(e)*empRetFine();
   var mh=(e.menosHrs||0)*vh;
   var o=(e.otros||[]).reduce(function(a,x){return a+(x.m||0);},0);
   var ab=effAbono(emp,mon);
@@ -1647,7 +1703,7 @@ function openPayrollSheet(empId){
     }
     return '<div class="attgrid">'+cells+'</div>';
   }
-  function ded(){return {f:nF()*vDia(),fi:nFi()*2*vDia(),r:nR()*50,mh:(entry.menosHrs||0)*vHora(),o:entry.otros.reduce(function(a,x){return a+(x.m||0);},0),a:ab()};}
+  function ded(){return {f:nF()*vDia(),fi:nFi()*(vDia()*(empFiDouble()?2:1)+empFiFine()),r:nR()*empRetFine(),mh:(entry.menosHrs||0)*vHora(),o:entry.otros.reduce(function(a,x){return a+(x.m||0);},0),a:ab()};}
   function net(){var d=ded();return Math.max(0,bp()+extra()-d.f-d.fi-d.r-d.mh-d.o-d.a);}
 
   function paint(){
@@ -2550,11 +2606,19 @@ function drawOtroImage(empId,o,cb){
 function niceDateEnd(){}
 
 /* ---------- propinas ---------- */
+function retTol(){return (cfg.finesEmp&&cfg.finesEmp.retTol!=null)?cfg.finesEmp.retTol:10;}
+function empRetFine(){return (cfg.finesEmp&&cfg.finesEmp.retFine!=null)?cfg.finesEmp.retFine:50;}
+function empFiDouble(){return !(cfg.finesEmp&&cfg.finesEmp.fiDoubleDay===false);}
+function empFiFine(){return (cfg.finesEmp&&cfg.finesEmp.fiFine!=null)?cfg.finesEmp.fiFine:0;}
+function discTimeOn(){return !(cfg.finesEmp&&cfg.finesEmp.discTime===false);}
+function tipRetFine(){return (cfg.finesTip&&cfg.finesTip.retFine!=null)?cfg.finesTip.retFine:50;}
+function tipFiFine(){return (cfg.finesTip&&cfg.finesTip.fiFine!=null)?cfg.finesTip.fiFine:100;}
+function entryMin(emp,turno){var E=cfg.entry||{};var v=emp&&emp.mgr?(turno==='AM'?E.mgrAm:E.mgrPm):(turno==='AM'?E.am:E.pm);return hm2min(v||(turno==='AM'?'08:00':'16:00'));}
 var TIP_FINE={retardo:50,faltaInj:100};
 function tipMark(empId,mon,d){var pe=payEntry(empId,mon);return (pe&&pe.days&&pe.days[d])||null;}
 function tipHours(emp,mon){var h=0;for(var d=0;d<7;d++){var st=effStatus(emp.id,mon,d),base=hoursOfObj(st),mk=tipMark(emp.id,mon,d);if(mk==='falta'||mk==='faltaInj')base=0;h+=base;}return h;}
-function tipFine(emp,mon){var f=0;for(var d=0;d<7;d++){var mk=tipMark(emp.id,mon,d);if(mk==='retardo')f+=TIP_FINE.retardo;else if(mk==='faltaInj')f+=TIP_FINE.faltaInj;}return f;}
-function tipFineDetail(emp,mon){var r=0,fi=0;for(var d=0;d<7;d++){var mk=tipMark(emp.id,mon,d);if(mk==='retardo')r++;else if(mk==='faltaInj')fi++;}return {ret:r,fi:fi,total:r*TIP_FINE.retardo+fi*TIP_FINE.faltaInj};}
+function tipFine(emp,mon){var f=0;for(var d=0;d<7;d++){var mk=tipMark(emp.id,mon,d);if(mk==='retardo')f+=tipRetFine();else if(mk==='faltaInj')f+=tipFiFine();}return f;}
+function tipFineDetail(emp,mon){var r=0,fi=0;for(var d=0;d<7;d++){var mk=tipMark(emp.id,mon,d);if(mk==='retardo')r++;else if(mk==='faltaInj')fi++;}return {ret:r,fi:fi,total:r*tipRetFine()+fi*tipFiFine()};}
 function tipPot(mon){var k=weekKey(mon),t=tips[k];if(!t)return 0;
   if(t.days){var s=0;for(var d=0;d<7;d++){var dd=t.days[d];if(!dd)continue;['AM','PM'].forEach(function(tn){if(dd[tn]&&dd[tn].amt)s+=dd[tn].amt;});}return s;}
   return t.total||0;}
@@ -2886,9 +2950,9 @@ function expectedStartMin(emp,d,mon){var du=effDuty(emp,d,mon);
   if(du.st==='custom')return hm2min(du.custom.s);
   if(du.st==='medio'){var sl=(du.slots&&du.slots.length)?du.slots.slice().sort()[0]:(du.am?'08-12':'16-20');return {'08-12':480,'12-16':720,'16-20':960,'20-24':1200}[sl]||480;}
   if(du.st==='cortado')return 480;
-  return (du.turno==='AM')?480:960;}
+  return entryMin(emp,du.turno);}
 function analyzeChecador(parsed,tol){
-  tol=(tol==null?10:tol);
+  tol=(tol==null?retTol():tol);
   var pstart=parsed.periodStart||'';var y=+pstart.slice(0,4),mo=+pstart.slice(4,6),da=+pstart.slice(6,8);
   var mon=startOfWeek(new Date(y,mo-1,da));
   var rows=[],unmatched=[];
@@ -2908,7 +2972,7 @@ function analyzeChecador(parsed,tol){
       // horas no trabajadas: falta contra el rol; NUNCA suma extra (tope en el rol), y solo si ≥15 min
       var wH=Math.min(rec.workedMin,expH*60)/60; // ignora excedente
       var shMin=expH*60-rec.workedMin;
-      if(shMin>=15){var sh=(expH*60-Math.min(rec.workedMin,expH*60))/60;shortH+=sh;detail.push({d:d,short:Math.round(sh*100)/100});}
+      if(discTimeOn()&&shMin>=15){var sh=(expH*60-Math.min(rec.workedMin,expH*60))/60;shortH+=sh;detail.push({d:d,short:Math.round(sh*100)/100});}
     }
     rows.push({emp:emp,clockName:b.name,mon:mon,faltas:faltas,retardos:retardos,shortH:Math.round(shortH*4)/4,detail:detail});
   });
@@ -2947,7 +3011,7 @@ function openChecadorReview(analysis){
 }
 function importChecadorFile(file){
   var rd=new FileReader();
-  rd.onload=function(){try{var parsed=parseChecadorCSV(String(rd.result));if(!parsed.blocks.length){toast('No se reconoció el archivo');return;}openChecadorReview(analyzeChecador(parsed,10));}catch(e){toast('Error al leer el archivo');}};
+  rd.onload=function(){try{var parsed=parseChecadorCSV(String(rd.result));if(!parsed.blocks.length){toast('No se reconoció el archivo');return;}openChecadorReview(analyzeChecador(parsed,retTol()));}catch(e){toast('Error al leer el archivo');}};
   rd.onerror=function(){toast('No se pudo leer el archivo');};
   rd.readAsText(file);
 }
