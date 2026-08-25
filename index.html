@@ -3214,6 +3214,7 @@ function buildTextSummary(opt){
   var daysSel=(opt.days&&opt.days.length)?opt.days.slice().sort(function(a,b){return a-b;}):[0,1,2,3,4,5,6];
   var group=opt.group||'turno';
   var list=filteredEmployees();
+  if(opt.emps&&opt.emps.length)list=list.filter(function(e){return opt.emps.indexOf(e.id)>=0;});
   var biz=((cfg.biz||'').split('-')[0].trim())||'Rol';
   var out='*Rol de trabajo — '+biz+'*\n_';
   out+=(daysSel.length===7?'Semana '+fmtRange(state.week):'Días seleccionados · '+fmtRange(state.week))+'_\n';
@@ -3267,10 +3268,12 @@ function buildTextSummary(opt){
 function openTextSummary(){
   applyRolesForWeek(state.week);
   var WD3=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
-  var opt={days:[0,1,2,3,4,5,6],group:'turno',turnos:['AM','PM'],areas:AREA_ORDER.slice(),rangeMode:false,rangeA:0,rangeB:6};
+  var opt={days:[0,1,2,3,4,5,6],group:'turno',turnos:['AM','PM'],areas:AREA_ORDER.slice(),emps:filteredEmployees().map(function(e){return e.id;}),rangeMode:false,rangeA:0,rangeB:6};
   function curDays(){if(!opt.rangeMode)return opt.days.slice();var a=Math.min(opt.rangeA,opt.rangeB),b=Math.max(opt.rangeA,opt.rangeB),r=[];for(var i=a;i<=b;i++)r.push(i);return r;}
   function paint(){
-    var txt=buildTextSummary({days:curDays(),group:opt.group,turnos:opt.turnos,areas:opt.areas});
+    var txt=buildTextSummary({days:curDays(),group:opt.group,turnos:opt.turnos,areas:opt.areas,emps:opt.emps});
+    var allP=filteredEmployees().sort(function(a,b){return (b.mgr?1:0)-(a.mgr?1:0)||a.name.localeCompare(b.name);});
+    var empChips='<div class="daychips" id="tsEmps" style="flex-wrap:wrap">'+allP.map(function(e){return '<button data-e="'+e.id+'" class="'+(opt.emps.indexOf(e.id)>=0?'on':'')+'">'+esc(e.name.split(' ')[0])+(e.mgr?' ★':'')+'</button>';}).join('')+'</div>';
     var dayChips=opt.rangeMode?'':'<div class="daychips" id="tsDays">'+WD3.map(function(l,i){return '<button data-d="'+i+'" class="'+(opt.days.indexOf(i)>=0?'on':'')+'">'+l+'</button>';}).join('')+'</div>';
     var rangeSel=opt.rangeMode?('<div class="daychips"><select class="fsel" id="tsRA">'+WD3.map(function(l,i){return '<option value="'+i+'"'+(opt.rangeA===i?' selected':'')+'>'+l+'</option>';}).join('')+'</select><span style="align-self:center">a</span><select class="fsel" id="tsRB">'+WD3.map(function(l,i){return '<option value="'+i+'"'+(opt.rangeB===i?' selected':'')+'>'+l+'</option>';}).join('')+'</select></div>'):'';
     sc.innerHTML=
@@ -3281,12 +3284,15 @@ function openTextSummary(){
         '<div class="fgroup"><label>Agrupar por</label><div class="segm" id="tsGroup"><button data-g="turno" class="'+(opt.group==='turno'?'on':'')+'">Turno › Área</button><button data-g="area" class="'+(opt.group==='area'?'on':'')+'">Área</button><button data-g="turnoonly" class="'+(opt.group==='turnoonly'?'on':'')+'">Turno</button></div></div>'+
         '<div class="fgroup"><label>Turno</label><div class="daychips" id="tsTurnos"><button data-t="AM" class="'+(opt.turnos.indexOf('AM')>=0?'on':'')+'">Mañana</button><button data-t="PM" class="'+(opt.turnos.indexOf('PM')>=0?'on':'')+'">Tarde</button></div></div>'+
         '<div class="fgroup"><label>Área</label><div class="daychips" id="tsAreas">'+AREA_ORDER.map(function(a){return '<button data-a="'+a+'" class="'+(opt.areas.indexOf(a)>=0?'on':'')+'">'+AREAS[a].short+'</button>';}).join('')+'</div></div>'+
+        '<div class="fgroup"><label>Personas <button class="linkbtn sm" id="tsAllP" style="float:right">Todos</button></label>'+empChips+'</div>'+
         '<textarea id="sumTxt" readonly style="width:100%;height:220px;border:1px solid #E7E1D5;border-radius:10px;padding:10px;font-size:13px;line-height:1.5;background:#fff;color:#2c2114;-webkit-user-select:text;user-select:text">'+esc(txt)+'</textarea>'+
         '<div class="hint" style="margin:6px 0">Los *asteriscos* y _guiones_ se convierten en negrita/cursiva en WhatsApp.</div>'+
         '<div class="sheetfoot"><button class="btn primary" id="sumCopy">Copiar</button><button class="btn ghost" id="sumShare">Compartir</button></div>'+
       '</div>';
-    function refresh(){sc.querySelector('#sumTxt').value=buildTextSummary({days:curDays(),group:opt.group,turnos:opt.turnos,areas:opt.areas});}
+    function refresh(){sc.querySelector('#sumTxt').value=buildTextSummary({days:curDays(),group:opt.group,turnos:opt.turnos,areas:opt.areas,emps:opt.emps});}
     function toggleArr(arr,v){var i=arr.indexOf(v);if(i>=0)arr.splice(i,1);else arr.push(v);}
+    sc.querySelectorAll('#tsEmps button').forEach(function(b){b.addEventListener('click',function(){toggleArr(opt.emps,b.getAttribute('data-e'));if(!opt.emps.length)opt.emps=filteredEmployees().map(function(e){return e.id;});b.classList.toggle('on');refresh();});});
+    var allpb=sc.querySelector('#tsAllP');if(allpb)allpb.addEventListener('click',function(){opt.emps=filteredEmployees().map(function(e){return e.id;});paint();});
     sc.querySelector('#tsMode').addEventListener('click',function(){opt.rangeMode=!opt.rangeMode;paint();});
     if(sc.querySelector('#tsDays'))sc.querySelectorAll('#tsDays button').forEach(function(b){b.addEventListener('click',function(){toggleArr(opt.days,+b.getAttribute('data-d'));if(!opt.days.length)opt.days=[+b.getAttribute('data-d')];b.classList.toggle('on');refresh();});});
     if(sc.querySelector('#tsRA'))sc.querySelector('#tsRA').addEventListener('change',function(){opt.rangeA=+this.value;refresh();});
