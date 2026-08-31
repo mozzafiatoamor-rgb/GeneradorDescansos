@@ -3168,17 +3168,27 @@ function openChecadorHistory(k){
     if(!any)html+='<div class="chkok" style="color:#9a958a">Sin registros</div>';
     html+='</div>';
   });
-  html+='<div class="tipacts" style="margin-bottom:10px"><button class="btn ghost" id="chkHistImg">📸 Regenerar reporte</button>'+(rec.applied?'<button class="btn ghost" id="chkHistEdit">✏️ Editar decisiones (reabrir análisis)</button>':'')+'</div>';
+  html+='<div class="tipacts" style="margin-bottom:10px"><button class="btn ghost" id="chkHistImg">📸 Regenerar reporte</button>'+((rec.blocks&&rec.blocks.length)?'<button class="btn ghost" id="chkHistEdit">✏️ Editar decisiones (reabrir análisis)</button>':'')+'</div>';
   html+='<div class="sheetfoot"><button class="btn primary" id="chkHistClose">Cerrar</button></div></div>';
   openSheet(html);
   sc.querySelector('#chkHistClose').addEventListener('click',closeSheet);
   var che=sc.querySelector('#chkHistEdit');if(che)che.addEventListener('click',function(){
     if((chk[k].target==='tip'||chk[k].target==='both')&&tips[k]&&tips[k].closed){toast('Propinas cerrada; reábrela antes de editar');return;}
-    undoChecadorApply(k);
     var parsed={periodStart:rec.periodStart,blocks:rec.blocks};
     state.week=mon;
+    if(rec.applied){undoChecadorApply(k);toast('Se revirtió lo aplicado — vuelve a decidir');}
+    else{
+      // import anterior a la función de deshacer: limpiar marcas de esa semana (best-effort)
+      var a0=analyzeChecador(parsed,retTol()),pk=payroll[k]||{};
+      a0.rows.forEach(function(r){var ent=pk[r.emp.id];if(ent&&ent.days){
+        r.faltas.forEach(function(d){if(ent.days[d]==='falta'||ent.days[d]==='faltaInj')delete ent.days[d];});
+        r.retardos.forEach(function(o){if(ent.days[o.d]==='retardo')delete ent.days[o.d];});
+        var cF=0,cR=0,cFi=0;for(var dd=0;dd<7;dd++){if(ent.days[dd]==='falta')cF++;else if(ent.days[dd]==='faltaInj')cFi++;else if(ent.days[dd]==='retardo')cR++;}ent.faltas=cF;ent.faltasInj=cFi;ent.retardos=cR;}
+        if(tips[k]&&tips[k].marks&&tips[k].marks[r.emp.id]){r.faltas.forEach(function(d){delete tips[k].marks[r.emp.id][d];});r.retardos.forEach(function(o){if(tips[k].marks[r.emp.id][o.d]==='retardo')delete tips[k].marks[r.emp.id][o.d];});}
+      });
+      save();toast('Import anterior: se limpiaron las marcas de esa semana — vuelve a decidir');
+    }
     openChecadorReview(analyzeChecador(parsed,retTol()),parsed);
-    toast('Se revirtió lo aplicado — vuelve a decidir');
   });
   sc.querySelector('#chkHistImg').addEventListener('click',function(){
     toast('Generando reporte…');
