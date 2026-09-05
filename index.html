@@ -157,6 +157,7 @@ h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em}
 .impchk{margin:8px 0}.impchk .btn{width:100%}.chkemp{background:#fff;border:1px solid #EAE3D5;border-radius:12px;padding:10px 12px;margin-bottom:8px}.chkname{font-weight:800;color:#2c2114;margin-bottom:6px}.chkname small{color:#9a958a;font-weight:600}.chkrow{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:14px;color:#3D2B1A;cursor:pointer}.chkrow input{width:18px;height:18px}
 .chkgrp{margin:4px 0 8px}.chkgt{font-size:12px;font-weight:800;color:#5a5346;margin:4px 0 2px;display:flex;align-items:center;gap:6px}.chkinfo{font-size:10px;font-weight:700;color:#9a8a6a;background:#F3ECDD;border-radius:6px;padding:2px 6px}.chknote{font-size:12px;color:#7a6f5a;padding:3px 0 3px 4px}.chkok{font-size:12.5px;color:#1E7D74;font-weight:700}.chkwarn{background:#FBEbe6;border:1px solid #F1C9BD;color:#9A331C;border-radius:10px;padding:8px 10px;font-size:12.5px;margin-bottom:8px}
 .chkapply{display:flex;flex-direction:column;gap:8px}.chkapply .btn{width:100%}
+.ufield{margin-bottom:12px}.ufield label{display:block;font-size:12px;font-weight:700;color:#5a5346;margin-bottom:5px}.uin{display:flex;align-items:center;gap:5px;border:1px solid #E7E1D5;border-radius:10px;padding:10px 12px}.uin span{color:#1E7D74;font-weight:800;font-size:18px}.uin input{border:0;width:100%;font-size:18px;font-weight:700;color:#2c2114;background:transparent}.ubreak{height:1px;background:#EAE3D5;margin:14px 0}.urow{display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:14px;color:#3D2B1A}.urow b{font-weight:700}.urow.neg span{color:#8a5a4a}.ubig{display:flex;justify-content:space-between;align-items:center;margin-top:10px;background:#16181D;border-radius:12px;padding:14px 16px}.ubig span{color:#EFE7D6;font-weight:700;font-size:15px}.ubig b{color:#fff;font-weight:800;font-size:24px}.uacts{margin:12px 0}.uacts .btn{width:100%}
 .chkfalta{margin-bottom:6px}.fseg{display:flex;gap:6px;margin:2px 0 4px 26px}.fsegb{border:1px solid #E7C9A8;background:#fff;color:#8a6a3a;border-radius:8px;padding:4px 10px;font-size:11.5px;font-weight:700;cursor:pointer}.fsegb.on{background:#C0344B;color:#fff;border-color:#C0344B}.fsegb.on[data-k='just']{background:#1E7D74;border-color:#1E7D74}.daychips button.lockday{opacity:.9;cursor:default}
 .loanhist{margin:8px 0;border-top:1px dashed #E0D9CB;padding-top:6px}.loanhist .lhh{font-size:11px;font-weight:700;color:#5a5346;margin-bottom:4px}.lpitem{display:flex;align-items:center;gap:8px;font-size:12px;padding:3px 0}.lpitem .lpw{flex:1;color:#5a5346}.lpitem .lpm{font-weight:700;font-variant-numeric:tabular-nums}.lpedit{border:0;background:none;color:#186B62;font-size:13px;padding:2px 4px}.lpitem .rm{border:0;background:none;color:#9A331C;font-size:15px;padding:0 4px}.lptot{font-size:11.5px;color:#5a5346;margin-top:5px;border-top:1px solid #EEE9DE;padding-top:5px}.lptot b{color:#1E7D74}.linkbtn.sm{font-size:10px;padding:2px 0;margin-top:2px;color:#186B62;background:none;border:0;text-decoration:underline}.hcol .scs{font-size:9.5px;color:#8a8275;margin-top:3px}.paidtoggle{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:12px 14px;background:#F1F7F2;border:1px solid #CFE6D4;border-radius:12px;font-weight:700;color:#1f6b46}.paidtag{display:inline-block;background:#1E7D74;color:#fff;font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle}.nomrow.paid{background:#F4FAF5}.paidcount{font-size:12.5px;color:#5a5346;margin-top:6px}.paidcount b{color:#1E7D74}
 .bakstatus{font-size:12px;font-weight:600;padding:9px 11px;border-radius:10px;margin-bottom:10px;line-height:1.35}.bakstatus.ok{background:#EEF7F0;color:#1f6b46;border:1px solid #CFE6D4}.bakstatus.warn{background:#FDF3E7;color:#8a5a12;border:1px solid #F0DDBB}.bakstatus.bad{background:#FCEDEA;color:#9A331C;border:1px solid #F0C9BE}
@@ -580,7 +581,7 @@ var store={
   get:function(k,d){try{var v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return mem[k]!=null?mem[k]:d;}},
   set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){mem[k]=v;}}
 };
-var K={emp:'desc.v1.employees',base:'desc.v1.base',weeks:'desc.v1.weeks',cfg:'desc.v1.cfg',closed:'desc.v1.closed',pay:'desc.v1.payroll',tips:'desc.v1.tips',chk:'desc.v1.checador',autobak:'desc.v1.autobak',lastexp:'desc.v1.lastexport'};
+var K={emp:'desc.v1.employees',base:'desc.v1.base',weeks:'desc.v1.weeks',cfg:'desc.v1.cfg',closed:'desc.v1.closed',pay:'desc.v1.payroll',tips:'desc.v1.tips',chk:'desc.v1.checador',util:'desc.v1.utilidades',autobak:'desc.v1.autobak',lastexp:'desc.v1.lastexport'};
 var SEDES_KEY='desc.v1.sedes',CURSEDE_KEY='desc.v1.cursede';
 var sedes=[],sede='mozza';
 function defaultSedes(){return [{id:'mozza',name:'Mozzafiato',tips:true},{id:'casaregina',name:'Casa Regina',tips:false}];}
@@ -590,7 +591,7 @@ function sedeHasTips(){var s=sedeObj();return s?s.tips!==false:true;}
 function applySedeKeys(id){var p=(id==='mozza')?'':(id+'.');
   K.emp='desc.v1.'+p+'employees';K.base='desc.v1.'+p+'base';K.weeks='desc.v1.'+p+'weeks';
   K.cfg='desc.v1.'+p+'cfg';K.closed='desc.v1.'+p+'closed';K.pay='desc.v1.'+p+'payroll';
-  K.tips='desc.v1.'+p+'tips';K.chk='desc.v1.'+p+'checador';K.autobak='desc.v1.'+p+'autobak';K.lastexp='desc.v1.'+p+'lastexport';}
+  K.tips='desc.v1.'+p+'tips';K.chk='desc.v1.'+p+'checador';K.util='desc.v1.'+p+'utilidades';K.autobak='desc.v1.'+p+'autobak';K.lastexp='desc.v1.'+p+'lastexport';}
 function switchSede(id){if(id===sede)return;save();sede=id;store.set(CURSEDE_KEY,id);applySedeKeys(id);loadData();state.week=startOfWeek(new Date());if(state.tab==='propinas'&&!sedeHasTips())state.tab='cal';renderSedeBar();setTab(state.tab);}
 
 /* ---------- constants ---------- */
@@ -617,11 +618,11 @@ var SEED=[
 ];
 
 /* ---------- data ---------- */
-var employees=[], base={}, weeks={}, closedDays={}, payroll={}, tips={}, chk={}, cfg={biz:'Mozzafiato-El placer del buen café-',defRest:1,rules:{crew:true,oneRest:false,mgr:false,minRest:true}};
+var employees=[], base={}, weeks={}, closedDays={}, payroll={}, tips={}, chk={}, util={}, cfg={biz:'Mozzafiato-El placer del buen café-',defRest:1,rules:{crew:true,oneRest:false,mgr:false,minRest:true}};
 function uid(){return 'e'+Math.random().toString(36).slice(2,9);}
 function seedEmployees(){return SEED.map(function(s){return {id:uid(),name:s[0],shift:s[1],area:s[2],mgr:s[3]};});}
 function isObj(o){return o&&typeof o==='object'&&!Array.isArray(o);}
-function snapshotData(){return {employees:employees,base:base,weeks:weeks,closed:closedDays,payroll:payroll,tips:tips,chk:chk,cfg:cfg,v:1,ts:new Date().toISOString()};}
+function snapshotData(){return {employees:employees,base:base,weeks:weeks,closed:closedDays,payroll:payroll,tips:tips,chk:chk,util:util,cfg:cfg,v:1,ts:new Date().toISOString()};}
 function loadData(){
   var isMozza=(sede==='mozza');
   var ab=store.get(K.autobak,null); if(!isObj(ab))ab=null;
@@ -638,6 +639,7 @@ function loadData(){
   payroll=store.get(K.pay,null); if(!isObj(payroll))payroll=(ab&&isObj(ab.payroll))?ab.payroll:{};
   tips=store.get(K.tips,null); if(!isObj(tips))tips=(ab&&isObj(ab.tips))?ab.tips:{};
   chk=store.get(K.chk,null); if(!isObj(chk))chk=(ab&&isObj(ab.chk))?ab.chk:{};
+  util=store.get(K.util,null); if(!isObj(util))util=(ab&&isObj(ab.util))?ab.util:{};
   var defBiz=isMozza?'Mozzafiato-El placer del buen café-':(sedeObj().name||'Negocio');
   cfg=store.get(K.cfg,null); if(!isObj(cfg))cfg=(ab&&isObj(ab.cfg))?ab.cfg:{biz:defBiz,defRest:1};
   if(isMozza&&(!cfg.biz||cfg.biz==='Mi negocio'))cfg.biz='Mozzafiato-El placer del buen café-';
@@ -660,7 +662,7 @@ function loadData(){
   if(!Array.isArray(cfg.attrs))cfg.attrs=[{id:'diligencia',name:'Diligenciero (compras/envíos)',rule:true}];
   if(!base){base=generateBase();store.set(K.base,base);}
 }
-function save(){store.set(K.emp,employees);store.set(K.base,base);store.set(K.weeks,weeks);store.set(K.closed,closedDays);store.set(K.pay,payroll);store.set(K.tips,tips);store.set(K.chk,chk);store.set(K.cfg,cfg);store.set(K.autobak,snapshotData());}
+function save(){store.set(K.emp,employees);store.set(K.base,base);store.set(K.weeks,weeks);store.set(K.closed,closedDays);store.set(K.pay,payroll);store.set(K.tips,tips);store.set(K.chk,chk);store.set(K.util,util);store.set(K.cfg,cfg);store.set(K.autobak,snapshotData());}
 
 /* ---------- dates ---------- */
 function startOfWeek(d){var x=new Date(d.getFullYear(),d.getMonth(),d.getDate());var k=(x.getDay()+6)%7;x.setDate(x.getDate()-k);return x;}
@@ -1637,6 +1639,7 @@ function renderNomina(){
   impRow.querySelector('#impChkBtn').addEventListener('click',function(){impRow.querySelector('#impChkFile').click();});
   impRow.querySelector('#impChkFile').addEventListener('change',function(){if(this.files&&this.files[0])importChecadorFile(this.files[0]);this.value='';});
   if(chk[weekKey(state.week)]){var histRow=el('<div class="impchk"><button class="btn ghost" id="chkHistBtn">📋 Ver checadas guardadas de esta semana</button></div>');host.appendChild(histRow);histRow.querySelector('#chkHistBtn').addEventListener('click',function(){openChecadorHistory(weekKey(state.week));});}
+  var utilRow=el('<div class="impchk"><button class="btn ghost" id="utilBtn">📊 Utilidad de la semana</button></div>');host.appendChild(utilRow);utilRow.querySelector('#utilBtn').addEventListener('click',function(){openUtilSheet();});
 
   // totals
   var grand=0,cash=0,abo=0,areaT={piso:0,barra:0,cocina:0},paidN=0,totN=0;
@@ -3250,6 +3253,51 @@ function empPayText(emp,mon){mon=mon||state.week;
   return L.join('\n');
 }
 
+function weeklyNomina(mon){applyRolesForWeek(mon);var t=0;roster(mon).forEach(function(e){t+=netPay(e,mon);});return Math.round(t*100)/100;}
+function openUtilSheet(){
+  var mon=state.week,k=weekKey(mon);
+  if(!util[k])util[k]={ventas:0,locales:0,foraneos:0,nomOver:null};
+  var u=util[k];
+  var nomAuto=weeklyNomina(mon);
+  var nomVal=(u.nomOver!=null)?u.nomOver:nomAuto;
+  var html='<div class="shead"><div class="t">Utilidad de la semana</div><div class="s">'+fmtRange(mon)+'</div></div><div class="sbody">'+
+    '<div class="ufield"><label>Ventas de la semana</label><div class="uin"><span>$</span><input id="uVent" type="number" inputmode="decimal" min="0" value="'+(u.ventas||'')+'" placeholder="0"></div></div>'+
+    '<div class="ufield"><label>Gastos locales</label><div class="uin"><span>$</span><input id="uLoc" type="number" inputmode="decimal" min="0" value="'+(u.locales||'')+'" placeholder="0"></div></div>'+
+    '<div class="ufield"><label>Gastos foráneos</label><div class="uin"><span>$</span><input id="uFor" type="number" inputmode="decimal" min="0" value="'+(u.foraneos||'')+'" placeholder="0"></div></div>'+
+    '<div class="ufield"><label>Nómina de la semana <button class="linkbtn sm" id="uNomAuto">usar calculada ('+fmtMoney(nomAuto)+')</button></label><div class="uin"><span>$</span><input id="uNom" type="number" inputmode="decimal" min="0" value="'+nomVal+'"></div><div class="hint">Se llena sola con lo que ya calculaste en Nómina; puedes ajustarla.</div></div>'+
+    '<div class="ubreak"></div>'+
+    '<div class="urow"><span>Ventas</span><b id="rVent">'+fmtMoney(u.ventas||0)+'</b></div>'+
+    '<div class="urow neg"><span>− Gastos locales</span><b id="rLoc">'+fmtMoney(u.locales||0)+'</b></div>'+
+    '<div class="urow neg"><span>− Gastos foráneos</span><b id="rFor">'+fmtMoney(u.foraneos||0)+'</b></div>'+
+    '<div class="urow neg"><span>− Nómina</span><b id="rNom">'+fmtMoney(nomVal)+'</b></div>'+
+    '<div class="ubig"><span>Utilidad</span><b id="rUtil">'+fmtMoney((u.ventas||0)-(u.locales||0)-(u.foraneos||0)-nomVal)+'</b></div>'+
+    '<div class="uacts"><button class="btn ghost" id="uImg">📸 Enviar resumen</button></div>'+
+    '<div class="sheetfoot"><button class="btn primary" id="uClose">Listo</button></div></div>';
+  openSheet(html);
+  function num(id){return Math.max(0,parseFloat((sc.querySelector(id)||{}).value)||0);}
+  function recalc(){
+    u.ventas=num('#uVent');u.locales=num('#uLoc');u.foraneos=num('#uFor');
+    var nv=num('#uNom');u.nomOver=(Math.abs(nv-nomAuto)<0.005)?null:nv;
+    save();
+    sc.querySelector('#rVent').textContent=fmtMoney(u.ventas);
+    sc.querySelector('#rLoc').textContent=fmtMoney(u.locales);
+    sc.querySelector('#rFor').textContent=fmtMoney(u.foraneos);
+    sc.querySelector('#rNom').textContent=fmtMoney(nv);
+    var util2=u.ventas-u.locales-u.foraneos-nv;
+    var rb=sc.querySelector('#rUtil');rb.textContent=fmtMoney(util2);rb.style.color=util2<0?'#C0344B':'#1E7D74';
+  }
+  ['#uVent','#uLoc','#uFor','#uNom'].forEach(function(id){var el2=sc.querySelector(id);if(el2)el2.addEventListener('input',recalc);});
+  sc.querySelector('#uNomAuto').addEventListener('click',function(){sc.querySelector('#uNom').value=nomAuto;recalc();});
+  sc.querySelector('#uClose').addEventListener('click',closeSheet);
+  sc.querySelector('#uImg').addEventListener('click',function(){toast('Generando resumen…');var nv=num('#uNom');drawUtilImage(mon,u.ventas,u.locales,u.foraneos,nv,function(cv){shareCanvas(cv,'utilidad-'+iso(mon)+'.png','Utilidad '+fmtRange(mon));});});
+  recalc();
+}
+function drawUtilImage(mon,ventas,locales,foraneos,nom,cb){
+  var utilv=ventas-locales-foraneos-nom;
+  var rows=[['Ventas de la semana',fmtMoney(ventas)],['Gastos locales','-'+fmtMoney(locales)],['Gastos foráneos','-'+fmtMoney(foraneos)],['Nómina','-'+fmtMoney(nom)]];
+  drawReceiptCard({title:'Utilidad de la semana',rows:rows,bigLabel:'Utilidad',bigVal:fmtMoney(utilv),stamp:utilv<0?'PÉRDIDA':'UTILIDAD',stampColor:utilv<0?'#C0344B':'#1E7D74'},cb);
+}
+
 /* ---------- resumen en texto ---------- */
 function slotHoursText(slot){return {'08-12':'de 8:00 a.m. a 12:00 del mediodía','12-16':'de 12:00 del mediodía a 4:00 p.m.','16-20':'de 4:00 p.m. a 8:00 p.m.','20-24':'de 8:00 p.m. a 12:00 de la noche'}[slot]||'';}
 function taskNatural(t){var m={'Compras':'las compras','Banco':'ir al banco','Mandado':'los mandados','Limpieza':'la limpieza a fondo','Inventario':'el inventario'};return m[t]||('la tarea de '+t.toLowerCase());}
@@ -3715,7 +3763,7 @@ document.getElementById('importFile').addEventListener('change',function(ev){
     var emps=d.employees.length,weeksN=isObj(d.weeks)?Object.keys(d.weeks).length:0,payN=isObj(d.payroll)?Object.keys(d.payroll).length:0;
     var when=d.ts?(' del '+fmtDateTime(d.ts)):'';
     if(!confirm('Restaurar respaldo'+when+':\n• '+emps+' empleados\n• '+weeksN+' semanas de rol\n• '+payN+' semanas de nómina\n\nEsto REEMPLAZA tus datos actuales de este dispositivo. ¿Continuar?'))return;
-    employees=d.employees;base=isObj(d.base)?d.base:generateBase();weeks=isObj(d.weeks)?d.weeks:{};closedDays=isObj(d.closed)?d.closed:{};payroll=isObj(d.payroll)?d.payroll:{};tips=isObj(d.tips)?d.tips:{};chk=isObj(d.chk)?d.chk:{};if(isObj(d.cfg))cfg=d.cfg;
+    employees=d.employees;base=isObj(d.base)?d.base:generateBase();weeks=isObj(d.weeks)?d.weeks:{};closedDays=isObj(d.closed)?d.closed:{};payroll=isObj(d.payroll)?d.payroll:{};tips=isObj(d.tips)?d.tips:{};chk=isObj(d.chk)?d.chk:{};util=isObj(d.util)?d.util:{};if(isObj(d.cfg))cfg=d.cfg;
     if(!isObj(cfg.rules))cfg.rules={crew:true,oneRest:false,mgr:false,minRest:true};
     save();renderCalendar();renderPlantilla();renderAjustes();if(state.tab==='nomina')renderNomina();toast('Datos restaurados');
   };r.readAsText(f);
