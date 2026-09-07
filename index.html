@@ -159,6 +159,7 @@ h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em}
 .chkapply{display:flex;flex-direction:column;gap:8px}.chkapply .btn{width:100%}
 .ufield{margin-bottom:12px}.ufield label{display:block;font-size:12px;font-weight:700;color:#5a5346;margin-bottom:5px}.uin{display:flex;align-items:center;gap:5px;border:1px solid #E7E1D5;border-radius:10px;padding:10px 12px}.uin span{color:#1E7D74;font-weight:800;font-size:18px}.uin input{border:0;width:100%;font-size:18px;font-weight:700;color:#2c2114;background:transparent}.ubreak{height:1px;background:#EAE3D5;margin:14px 0}.urow{display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:14px;color:#3D2B1A}.urow b{font-weight:700}.urow.neg span{color:#8a5a4a}.ubig{display:flex;justify-content:space-between;align-items:center;margin-top:10px;background:#16181D;border-radius:12px;padding:14px 16px}.ubig span{color:#EFE7D6;font-weight:700;font-size:15px}.ubig b{color:#fff;font-weight:800;font-size:24px}.uacts{margin:12px 0}.uacts .btn{width:100%}
 .gastosbox{background:#FAF8F3;border:1px solid #EAE3D5;border-radius:12px;padding:10px 12px;margin-bottom:4px}.gbh{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:800;color:#5a5346;margin-bottom:4px}.gfilt{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}.gseg{margin:0}.ghint{font-size:12px;color:#8a8275;margin-bottom:6px}.glist{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}.gitem{display:flex;justify-content:space-between;align-items:center;gap:8px;background:#fff;border:1px solid #EAE3D5;border-radius:10px;padding:9px 11px}.gitem .gc{font-weight:700;color:#2c2114;font-size:14px}.gitem .gsub{font-size:11px;color:#7a6f5a;margin-top:2px}.gamb{padding:1px 6px;border-radius:6px;font-weight:700}.gamb.local{background:#E4F1EE;color:#1E6B62}.gamb.foraneo{background:#EFE3F1;color:#7A1E6B}.gmens{color:#9A5B1A;font-weight:700}.gitem .gmonto{font-weight:800;color:#2c2114;text-align:right}.gbtns{display:flex;gap:4px;margin-top:4px;justify-content:flex-end}.mini.danger{color:#C0344B}.btn.danger{color:#C0344B}
+.acbox{position:relative}.aclist{position:absolute;left:0;right:0;top:100%;z-index:60;background:#fff;border:1px solid #E7E1D5;border-radius:8px;box-shadow:0 8px 24px rgba(22,24,29,.15);max-height:200px;overflow:auto;margin-top:2px}.acitem{padding:9px 11px;font-size:14px;color:#2c2114;cursor:pointer;border-bottom:1px solid #F2ECE0}.acitem:last-child{border-bottom:0}.acitem:active,.acitem:hover{background:#F4F1EA}.grow2{display:flex;gap:8px;align-items:center}.grow2 .btn{flex:1}
 .chkfalta{margin-bottom:6px}.fseg{display:flex;gap:6px;margin:2px 0 4px 26px}.fsegb{border:1px solid #E7C9A8;background:#fff;color:#8a6a3a;border-radius:8px;padding:4px 10px;font-size:11.5px;font-weight:700;cursor:pointer}.fsegb.on{background:#C0344B;color:#fff;border-color:#C0344B}.fsegb.on[data-k='just']{background:#1E7D74;border-color:#1E7D74}.daychips button.lockday{opacity:.9;cursor:default}
 .loanhist{margin:8px 0;border-top:1px dashed #E0D9CB;padding-top:6px}.loanhist .lhh{font-size:11px;font-weight:700;color:#5a5346;margin-bottom:4px}.lpitem{display:flex;align-items:center;gap:8px;font-size:12px;padding:3px 0}.lpitem .lpw{flex:1;color:#5a5346}.lpitem .lpm{font-weight:700;font-variant-numeric:tabular-nums}.lpedit{border:0;background:none;color:#186B62;font-size:13px;padding:2px 4px}.lpitem .rm{border:0;background:none;color:#9A331C;font-size:15px;padding:0 4px}.lptot{font-size:11.5px;color:#5a5346;margin-top:5px;border-top:1px solid #EEE9DE;padding-top:5px}.lptot b{color:#1E7D74}.linkbtn.sm{font-size:10px;padding:2px 0;margin-top:2px;color:#186B62;background:none;border:0;text-decoration:underline}.hcol .scs{font-size:9.5px;color:#8a8275;margin-top:3px}.paidtoggle{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:12px 14px;background:#F1F7F2;border:1px solid #CFE6D4;border-radius:12px;font-weight:700;color:#1f6b46}.paidtag{display:inline-block;background:#1E7D74;color:#fff;font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle}.nomrow.paid{background:#F4FAF5}.paidcount{font-size:12.5px;color:#5a5346;margin-top:6px}.paidcount b{color:#1E7D74}
 .bakstatus{font-size:12px;font-weight:600;padding:9px 11px;border-radius:10px;margin-bottom:10px;line-height:1.35}.bakstatus.ok{background:#EEF7F0;color:#1f6b46;border:1px solid #CFE6D4}.bakstatus.warn{background:#FDF3E7;color:#8a5a12;border:1px solid #F0DDBB}.bakstatus.bad{background:#FCEDEA;color:#9A331C;border:1px solid #F0C9BE}
@@ -3333,19 +3334,30 @@ function expContribution(e,mon){
 }
 function expWeekTotal(mon,ambito){var t=0;expenses.forEach(function(e){if(e.ambito===ambito)t+=expContribution(e,mon);});return Math.round(t*100)/100;}
 function expWeekList(mon,ambito){return expenses.filter(function(e){return e.ambito===ambito&&expContribution(e,mon)>0;});}
+function bindAC(inp,itemsFn,onPick){
+  if(!inp)return;var box=inp.parentNode,list=box.querySelector('.aclist');if(!list)return;
+  function show(){var v=(inp.value||'').toLowerCase();var all=itemsFn()||[];var items=all.filter(function(it){return it&&it.toLowerCase().indexOf(v)>=0;});
+    // sin duplicados, máx 8
+    var seen={},out=[];items.forEach(function(it){var kk=it.toLowerCase();if(!seen[kk]){seen[kk]=1;out.push(it);}});out=out.slice(0,8);
+    if(!out.length){list.style.display='none';return;}
+    list.innerHTML=out.map(function(it){return '<div class="acitem">'+esc(it)+'</div>';}).join('');
+    list.style.display='block';
+    list.querySelectorAll('.acitem').forEach(function(d,i){d.addEventListener('mousedown',function(ev){ev.preventDefault();inp.value=out[i];list.style.display='none';if(onPick)onPick(out[i]);});});
+  }
+  inp.addEventListener('focus',show);inp.addEventListener('input',show);
+  inp.addEventListener('blur',function(){setTimeout(function(){list.style.display='none';},160);});
+}
 function openGastosSheet(preAmbito){
   var f={ambito:preAmbito||'',cat:'',q:''};
   var cats=cfg.expCats||[];
   var concepts=[];expenses.forEach(function(e){if(e.concepto&&concepts.indexOf(e.concepto)<0)concepts.push(e.concepto);});
   var sug=concepts.concat(cats.filter(function(c){return concepts.indexOf(c)<0;}));
-  var dlCat='<datalist id="catList">'+cats.map(function(c){return '<option value="'+esc(c)+'">';}).join('')+'</datalist>';
-  var dlSug='<datalist id="sugList">'+sug.map(function(c){return '<option value="'+esc(c)+'">';}).join('')+'</datalist>';
-  var html='<div class="shead"><div class="t">Gastos</div><div class="s">Honorarios, compras foráneas, servicios…</div></div><div class="sbody">'+dlCat+dlSug;
+  var html='<div class="shead"><div class="t">Gastos</div><div class="s">Honorarios, compras foráneas, servicios…</div></div><div class="sbody">';
   html+='<div class="gfilt"><div class="segm gseg" id="gAmbF">'+
     '<button data-fa="" class="on">Todos</button><button data-fa="local">Local</button><button data-fa="foraneo">Foráneo</button></div>'+
-    '<input class="field sm" id="gQ" list="sugList" placeholder="Buscar concepto/categoría" autocomplete="off">'+
-    '<input class="field sm" id="gCatF" list="catList" placeholder="Filtrar por categoría" autocomplete="off"></div>';
-  html+='<button class="btn primary" id="gAdd" style="width:100%;margin-bottom:10px">+ Agregar gasto</button>';
+    '<div class="acbox"><input class="field sm" id="gQ" autocomplete="off" placeholder="Buscar concepto/categoría"><div class="aclist" style="display:none"></div></div>'+
+    '<div class="acbox"><input class="field sm" id="gCatF" autocomplete="off" placeholder="Filtrar por categoría"><div class="aclist" style="display:none"></div></div></div>';
+  html+='<div class="grow2"><button class="btn primary" id="gAdd">+ Agregar gasto</button><button class="btn ghost" id="gCats">Categorías</button></div>';
   html+='<div class="ghint" id="gCount"></div><div class="glist" id="gList"></div>';
   html+='<div class="sheetfoot"><button class="btn ghost" id="gClose">Cerrar</button></div></div>';
   openSheet(html);
@@ -3372,22 +3384,42 @@ function openGastosSheet(preAmbito){
   sc.querySelectorAll('#gAmbF [data-fa]').forEach(function(b){b.addEventListener('click',function(){f.ambito=b.getAttribute('data-fa');sc.querySelectorAll('#gAmbF [data-fa]').forEach(function(x){x.classList.toggle('on',x===b);});renderList();});});
   sc.querySelector('#gQ').addEventListener('input',function(){f.q=this.value;renderList();});
   sc.querySelector('#gCatF').addEventListener('input',function(){f.cat=this.value;renderList();});
+  bindAC(sc.querySelector('#gQ'),function(){return sug;},function(v){f.q=v;renderList();});
+  bindAC(sc.querySelector('#gCatF'),function(){return (cfg.expCats||[]);},function(v){f.cat=v;renderList();});
   sc.querySelector('#gAdd').addEventListener('click',function(){gastoForm(null,f.ambito||'foraneo',function(){openGastosSheet(f.ambito);});});
+  sc.querySelector('#gCats').addEventListener('click',function(){openCatManager(function(){openGastosSheet(f.ambito);});});
   sc.querySelector('#gClose').addEventListener('click',function(){closeSheet();if(state.tab==='nomina')renderNomina();});
   renderList();
+}
+function openCatManager(back){
+  function draw(){
+    var cats=cfg.expCats||[];
+    var html='<div class="shead"><div class="t">Categorías</div><div class="s">Edita, agrega o elimina</div></div><div class="sbody">';
+    html+='<div class="grow2"><div class="acbox" style="flex:1"><input class="field sm" id="ncName" placeholder="Nueva categoría" autocomplete="off"></div><button class="mini add" id="ncAdd">+ Agregar</button></div>';
+    html+='<div class="glist" style="margin-top:10px">';
+    if(!cats.length)html+='<div class="empty">Sin categorías.</div>';
+    cats.forEach(function(c,i){html+='<div class="gitem"><input class="field sm catedit" data-ci="'+i+'" value="'+esc(c)+'" style="flex:1;border:0;background:transparent;font-weight:700"><div class="gbtns"><button class="mini" data-crn="'+i+'">Guardar</button><button class="mini danger" data-cdl="'+i+'">🗑</button></div></div>';});
+    html+='</div><div class="sheetfoot"><button class="btn ghost" id="ncBack">Volver</button></div></div>';
+    openSheet(html);
+    sc.querySelector('#ncAdd').addEventListener('click',function(){var v=sc.querySelector('#ncName').value.trim();if(!v){toast('Escribe un nombre');return;}if((cfg.expCats||[]).some(function(c){return c.toLowerCase()===v.toLowerCase();})){toast('Ya existe');return;}cfg.expCats.push(v);save();draw();});
+    sc.querySelectorAll('[data-crn]').forEach(function(b){b.addEventListener('click',function(){var i=+b.getAttribute('data-crn');var nv=sc.querySelector('.catedit[data-ci="'+i+'"]').value.trim();if(!nv){toast('Nombre vacío');return;}var old=cfg.expCats[i];if(nv===old){toast('Sin cambios');return;}
+      if((cfg.expCats||[]).some(function(c,j){return j!==i&&c.toLowerCase()===nv.toLowerCase();})){toast('Ya existe esa categoría');return;}
+      cfg.expCats[i]=nv;expenses.forEach(function(e){if(e.cat===old)e.cat=nv;});save();toast('Actualizada');draw();});});
+    sc.querySelectorAll('[data-cdl]').forEach(function(b){b.addEventListener('click',function(){var i=+b.getAttribute('data-cdl');var c=cfg.expCats[i];var used=expenses.filter(function(e){return e.cat===c;}).length;if(!confirm('¿Eliminar "'+c+'"?'+(used?(' '+used+' gasto(s) la usan; conservarán el texto.'):'')))return;cfg.expCats.splice(i,1);save();draw();});});
+    sc.querySelector('#ncBack').addEventListener('click',function(){back&&back();});
+  }
+  draw();
 }
 function gastoForm(id,defAmbito,back){
   var e=id?expenses.filter(function(x){return x.id===id;})[0]:null;
   var isNew=!e; if(!e)e={id:expUid(),date:iso(new Date()),ambito:defAmbito||'foraneo',cat:'',concepto:'',monto:0,mensual:false,prorr:false};
   var cats=cfg.expCats||[];
   var concepts=[];expenses.forEach(function(x){if(x.concepto&&concepts.indexOf(x.concepto)<0)concepts.push(x.concepto);});
-  var dl='<datalist id="catList2">'+cats.map(function(c){return '<option value="'+esc(c)+'">';}).join('')+'</datalist>'+
-         '<datalist id="concList">'+concepts.map(function(c){return '<option value="'+esc(c)+'">';}).join('')+'</datalist>';
-  var html='<div class="shead"><div class="t">'+(isNew?'Nuevo gasto':'Editar gasto')+'</div></div><div class="sbody">'+dl+
+  var html='<div class="shead"><div class="t">'+(isNew?'Nuevo gasto':'Editar gasto')+'</div></div><div class="sbody">'+
     '<div class="ufield"><label>Fecha</label><input class="field" id="gFecha" type="date" value="'+esc(e.date)+'"></div>'+
     '<div class="ufield"><label>Ámbito</label><div class="segm" id="gAmb"><button data-am="local" class="'+(e.ambito==='local'?'on':'')+'">Local</button><button data-am="foraneo" class="'+(e.ambito==='foraneo'?'on':'')+'">Foráneo</button></div></div>'+
-    '<div class="ufield"><label>Categoría</label><input class="field" id="gCat" list="catList2" placeholder="escribe o elige" value="'+esc(e.cat)+'"><div class="hint">Puedes escribir una nueva; se guarda para la próxima.</div></div>'+
-    '<div class="ufield"><label>Concepto</label><input class="field" id="gConc" list="concList" autocomplete="off" placeholder="ej. Honorarios contables agosto" value="'+esc(e.concepto)+'"></div>'+
+    '<div class="ufield"><label>Categoría</label><div class="acbox"><input class="field" id="gCat" autocomplete="off" placeholder="escribe o elige" value="'+esc(e.cat)+'"><div class="aclist" style="display:none"></div></div><div class="hint">Al escribir aparecen las guardadas. Si es nueva, se guarda sola.</div></div>'+
+    '<div class="ufield"><label>Concepto</label><div class="acbox"><input class="field" id="gConc" autocomplete="off" placeholder="ej. Honorarios contables agosto" value="'+esc(e.concepto)+'"><div class="aclist" style="display:none"></div></div></div>'+
     '<div class="ufield"><label>Monto</label><div class="uin"><span>$</span><input id="gMonto" type="number" inputmode="decimal" min="0" value="'+(e.monto||'')+'"></div></div>'+
     '<div class="setrow toggle"><div class="tx"><b>Pago mensual</b><small>Se paga una vez al mes.</small></div><label class="swt"><input type="checkbox" id="gMens" '+(e.mensual?'checked':'')+'><span></span></label></div>'+
     '<div class="setrow toggle" id="gProrrRow" style="'+(e.mensual?'':'display:none')+'"><div class="tx"><b>Prorratear entre semanas</b><small>Reparte el monto entre las semanas del mes (÷) para no cargarlo todo a una.</small></div><label class="swt"><input type="checkbox" id="gProrr" '+(e.prorr?'checked':'')+'><span></span></label></div>'+
@@ -3395,6 +3427,8 @@ function gastoForm(id,defAmbito,back){
     (isNew?'':'<div class="uacts"><button class="btn ghost danger" id="gDel">Eliminar</button></div>')+
     '<div class="sheetfoot"><button class="btn ghost" id="gBack">Volver</button></div></div>';
   openSheet(html);
+  bindAC(sc.querySelector('#gCat'),function(){return (cfg.expCats||[]);},null);
+  bindAC(sc.querySelector('#gConc'),function(){return concepts;},null);
   var amb=e.ambito;
   sc.querySelectorAll('#gAmb button').forEach(function(b){b.addEventListener('click',function(){amb=b.getAttribute('data-am');sc.querySelectorAll('#gAmb button').forEach(function(x){x.classList.toggle('on',x===b);});});});
   sc.querySelector('#gMens').addEventListener('change',function(){sc.querySelector('#gProrrRow').style.display=this.checked?'':'none';});
