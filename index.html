@@ -3335,54 +3335,59 @@ function expWeekTotal(mon,ambito){var t=0;expenses.forEach(function(e){if(e.ambi
 function expWeekList(mon,ambito){return expenses.filter(function(e){return e.ambito===ambito&&expContribution(e,mon)>0;});}
 function openGastosSheet(preAmbito){
   var f={ambito:preAmbito||'',cat:'',q:''};
-  function draw(){
-    var cats=cfg.expCats||[];
-    var dl='<datalist id="catList">'+cats.map(function(c){return '<option value="'+esc(c)+'">';}).join('')+'</datalist>';
+  var cats=cfg.expCats||[];
+  var concepts=[];expenses.forEach(function(e){if(e.concepto&&concepts.indexOf(e.concepto)<0)concepts.push(e.concepto);});
+  var sug=concepts.concat(cats.filter(function(c){return concepts.indexOf(c)<0;}));
+  var dlCat='<datalist id="catList">'+cats.map(function(c){return '<option value="'+esc(c)+'">';}).join('')+'</datalist>';
+  var dlSug='<datalist id="sugList">'+sug.map(function(c){return '<option value="'+esc(c)+'">';}).join('')+'</datalist>';
+  var html='<div class="shead"><div class="t">Gastos</div><div class="s">Honorarios, compras foráneas, servicios…</div></div><div class="sbody">'+dlCat+dlSug;
+  html+='<div class="gfilt"><div class="segm gseg" id="gAmbF">'+
+    '<button data-fa="" class="on">Todos</button><button data-fa="local">Local</button><button data-fa="foraneo">Foráneo</button></div>'+
+    '<input class="field sm" id="gQ" list="sugList" placeholder="Buscar concepto/categoría" autocomplete="off">'+
+    '<input class="field sm" id="gCatF" list="catList" placeholder="Filtrar por categoría" autocomplete="off"></div>';
+  html+='<button class="btn primary" id="gAdd" style="width:100%;margin-bottom:10px">+ Agregar gasto</button>';
+  html+='<div class="ghint" id="gCount"></div><div class="glist" id="gList"></div>';
+  html+='<div class="sheetfoot"><button class="btn ghost" id="gClose">Cerrar</button></div></div>';
+  openSheet(html);
+  function renderList(){
     var list=expenses.slice().filter(function(e){
       if(f.ambito&&e.ambito!==f.ambito)return false;
-      if(f.cat&&e.cat!==f.cat)return false;
+      if(f.cat){var fc=f.cat.toLowerCase();if((e.cat||'').toLowerCase().indexOf(fc)<0)return false;}
       if(f.q){var q=f.q.toLowerCase();if((e.concepto||'').toLowerCase().indexOf(q)<0&&(e.cat||'').toLowerCase().indexOf(q)<0)return false;}
       return true;
     }).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
     var total=list.reduce(function(a,e){return a+(e.monto||0);},0);
-    var html='<div class="shead"><div class="t">Gastos</div><div class="s">Honorarios, compras foráneas, servicios…</div></div><div class="sbody">'+dl;
-    html+='<div class="gfilt"><div class="segm gseg">'+
-      '<button data-fa="" class="'+(f.ambito===''?'on':'')+'">Todos</button>'+
-      '<button data-fa="local" class="'+(f.ambito==='local'?'on':'')+'">Local</button>'+
-      '<button data-fa="foraneo" class="'+(f.ambito==='foraneo'?'on':'')+'">Foráneo</button></div>'+
-      '<input class="field sm" id="gQ" placeholder="Buscar concepto/categoría" value="'+esc(f.q)+'">'+
-      '<input class="field sm" id="gCatF" list="catList" placeholder="Filtrar categoría" value="'+esc(f.cat)+'"></div>';
-    html+='<button class="btn primary" id="gAdd" style="width:100%;margin-bottom:10px">+ Agregar gasto</button>';
-    html+='<div class="ghint">'+list.length+' gasto'+(list.length!==1?'s':'')+' · total '+fmtMoney(total)+'</div>';
-    html+='<div class="glist">';
-    if(!list.length)html+='<div class="empty">Sin gastos con estos filtros.</div>';
+    sc.querySelector('#gCount').textContent=list.length+' gasto'+(list.length!==1?'s':'')+' · total '+fmtMoney(total);
+    var h='';
+    if(!list.length)h='<div class="empty">Sin gastos con estos filtros.</div>';
     list.forEach(function(e){
-      html+='<div class="gitem"><div class="gmain"><div class="gc">'+esc(e.concepto||'(sin concepto)')+'</div>'+
+      h+='<div class="gitem"><div class="gmain"><div class="gc">'+esc(e.concepto||'(sin concepto)')+'</div>'+
         '<div class="gsub">'+niceDate(e.date)+' · '+esc(e.cat||'—')+' · <span class="gamb '+e.ambito+'">'+(e.ambito==='local'?'Local':'Foráneo')+'</span>'+(e.mensual?(' · <span class="gmens">mensual'+(e.prorr?' ÷':'')+'</span>'):'')+'</div></div>'+
         '<div class="gright"><div class="gmonto">'+fmtMoney(e.monto||0)+'</div><div class="gbtns"><button class="mini" data-ge="'+e.id+'">✎</button><button class="mini danger" data-gd="'+e.id+'">🗑</button></div></div></div>';
     });
-    html+='</div><div class="sheetfoot"><button class="btn ghost" id="gClose">Cerrar</button></div></div>';
-    openSheet(html);
-    sc.querySelectorAll('[data-fa]').forEach(function(b){b.addEventListener('click',function(){f.ambito=b.getAttribute('data-fa');draw();});});
-    sc.querySelector('#gQ').addEventListener('input',function(){f.q=this.value;var v=this.value;draw();var el2=sc.querySelector('#gQ');if(el2){el2.focus();el2.value=v;el2.setSelectionRange(v.length,v.length);}});
-    sc.querySelector('#gCatF').addEventListener('change',function(){f.cat=this.value;draw();});
-    sc.querySelector('#gAdd').addEventListener('click',function(){gastoForm(null,f.ambito||'foraneo',draw);});
-    sc.querySelectorAll('[data-ge]').forEach(function(b){b.addEventListener('click',function(){gastoForm(b.getAttribute('data-ge'),null,draw);});});
-    sc.querySelectorAll('[data-gd]').forEach(function(b){b.addEventListener('click',function(){var id=b.getAttribute('data-gd');if(confirm('¿Eliminar este gasto?')){expenses=expenses.filter(function(e){return e.id!==id;});save();draw();}});});
-    sc.querySelector('#gClose').addEventListener('click',function(){closeSheet();if(state.tab==='nomina')renderNomina();});
+    var lc=sc.querySelector('#gList');lc.innerHTML=h;
+    lc.querySelectorAll('[data-ge]').forEach(function(b){b.addEventListener('click',function(){gastoForm(b.getAttribute('data-ge'),null,function(){openGastosSheet(f.ambito);});});});
+    lc.querySelectorAll('[data-gd]').forEach(function(b){b.addEventListener('click',function(){var id=b.getAttribute('data-gd');if(confirm('¿Eliminar este gasto?')){expenses=expenses.filter(function(e){return e.id!==id;});save();renderList();}});});
   }
-  draw();
+  sc.querySelectorAll('#gAmbF [data-fa]').forEach(function(b){b.addEventListener('click',function(){f.ambito=b.getAttribute('data-fa');sc.querySelectorAll('#gAmbF [data-fa]').forEach(function(x){x.classList.toggle('on',x===b);});renderList();});});
+  sc.querySelector('#gQ').addEventListener('input',function(){f.q=this.value;renderList();});
+  sc.querySelector('#gCatF').addEventListener('input',function(){f.cat=this.value;renderList();});
+  sc.querySelector('#gAdd').addEventListener('click',function(){gastoForm(null,f.ambito||'foraneo',function(){openGastosSheet(f.ambito);});});
+  sc.querySelector('#gClose').addEventListener('click',function(){closeSheet();if(state.tab==='nomina')renderNomina();});
+  renderList();
 }
 function gastoForm(id,defAmbito,back){
   var e=id?expenses.filter(function(x){return x.id===id;})[0]:null;
   var isNew=!e; if(!e)e={id:expUid(),date:iso(new Date()),ambito:defAmbito||'foraneo',cat:'',concepto:'',monto:0,mensual:false,prorr:false};
   var cats=cfg.expCats||[];
-  var dl='<datalist id="catList2">'+cats.map(function(c){return '<option value="'+esc(c)+'">';}).join('')+'</datalist>';
+  var concepts=[];expenses.forEach(function(x){if(x.concepto&&concepts.indexOf(x.concepto)<0)concepts.push(x.concepto);});
+  var dl='<datalist id="catList2">'+cats.map(function(c){return '<option value="'+esc(c)+'">';}).join('')+'</datalist>'+
+         '<datalist id="concList">'+concepts.map(function(c){return '<option value="'+esc(c)+'">';}).join('')+'</datalist>';
   var html='<div class="shead"><div class="t">'+(isNew?'Nuevo gasto':'Editar gasto')+'</div></div><div class="sbody">'+dl+
     '<div class="ufield"><label>Fecha</label><input class="field" id="gFecha" type="date" value="'+esc(e.date)+'"></div>'+
     '<div class="ufield"><label>Ámbito</label><div class="segm" id="gAmb"><button data-am="local" class="'+(e.ambito==='local'?'on':'')+'">Local</button><button data-am="foraneo" class="'+(e.ambito==='foraneo'?'on':'')+'">Foráneo</button></div></div>'+
     '<div class="ufield"><label>Categoría</label><input class="field" id="gCat" list="catList2" placeholder="escribe o elige" value="'+esc(e.cat)+'"><div class="hint">Puedes escribir una nueva; se guarda para la próxima.</div></div>'+
-    '<div class="ufield"><label>Concepto</label><input class="field" id="gConc" placeholder="ej. Honorarios contables agosto" value="'+esc(e.concepto)+'"></div>'+
+    '<div class="ufield"><label>Concepto</label><input class="field" id="gConc" list="concList" autocomplete="off" placeholder="ej. Honorarios contables agosto" value="'+esc(e.concepto)+'"></div>'+
     '<div class="ufield"><label>Monto</label><div class="uin"><span>$</span><input id="gMonto" type="number" inputmode="decimal" min="0" value="'+(e.monto||'')+'"></div></div>'+
     '<div class="setrow toggle"><div class="tx"><b>Pago mensual</b><small>Se paga una vez al mes.</small></div><label class="swt"><input type="checkbox" id="gMens" '+(e.mensual?'checked':'')+'><span></span></label></div>'+
     '<div class="setrow toggle" id="gProrrRow" style="'+(e.mensual?'':'display:none')+'"><div class="tx"><b>Prorratear entre semanas</b><small>Reparte el monto entre las semanas del mes (÷) para no cargarlo todo a una.</small></div><label class="swt"><input type="checkbox" id="gProrr" '+(e.prorr?'checked':'')+'><span></span></label></div>'+
