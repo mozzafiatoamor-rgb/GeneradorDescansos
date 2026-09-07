@@ -2427,6 +2427,13 @@ function drawChecadorReport(analysis,WDF,mon,faltaKind,cb){
     cb(cv);
   });
 }
+function previewImage(cv,fname,title){
+  var url;try{url=cv.toDataURL('image/png');}catch(e){shareCanvas(cv,fname,title);return;}
+  var html='<div class="shead"><div class="t">'+esc(title)+'</div><div class="s">Verifica antes de enviar</div></div><div class="sbody"><img src="'+url+'" style="width:100%;border-radius:12px;border:1px solid #EAE3D5"/><div class="uacts"><button class="btn primary" id="pvShare">Compartir / Enviar</button></div><div class="sheetfoot"><button class="btn ghost" id="pvCloseB">Cerrar</button></div></div>';
+  openSheet(html);
+  sc.querySelector('#pvShare').addEventListener('click',function(){shareCanvas(cv,fname,title);});
+  sc.querySelector('#pvCloseB').addEventListener('click',closeSheet);
+}
 function shareCanvas(cv,fname,title){
   fname=fname||('rol-'+iso(state.week)+'.png');title=title||('Rol '+fmtRange(state.week));
   cv.toBlob(function(blob){
@@ -2677,10 +2684,12 @@ function tipFiFine(){return (cfg.finesTip&&cfg.finesTip.fiFine!=null)?cfg.finesT
 function entryMin(emp,turno){var E=cfg.entry||{};var v=emp&&emp.mgr?(turno==='AM'?E.mgrAm:E.mgrPm):(turno==='AM'?E.am:E.pm);return hm2min(v||(turno==='AM'?'08:00':'16:00'));}
 var TIP_FINE={retardo:50,faltaInj:100};
 function tipMark(empId,mon,d){var k=weekKey(mon);var tm=tips[k]&&tips[k].marks;if(tm){var em=tm[empId];return (em&&em[d])||null;}var pe=payEntry(empId,mon);return (pe&&pe.days&&pe.days[d])||null;}
-function ensureTipMarksSnapshot(k){if(!tips[k])tips[k]={};if(tips[k].marks)return;tips[k].marks={};var pk=payroll[k]||{};for(var eid in pk){var dd=pk[eid]&&pk[eid].days;if(!dd)continue;var mm={};for(var dk in dd){var v=dd[dk];if(v==='falta'||v==='faltaInj'||v==='retardo')mm[dk]=v;}if(Object.keys(mm).length)tips[k].marks[eid]=mm;}}
+function ensureTipMarksSnapshot(k){if(!tips[k])tips[k]={};if(tips[k].marks)return;tips[k].marks={};tips[k].menos=tips[k].menos||{};var pk=payroll[k]||{};for(var eid in pk){var dd=pk[eid]&&pk[eid].days;if(dd){var mm={};for(var dk in dd){var v=dd[dk];if(v==='falta'||v==='faltaInj'||v==='retardo')mm[dk]=v;}if(Object.keys(mm).length)tips[k].marks[eid]=mm;}var mh=pk[eid]&&pk[eid].menosHrs;if(mh>0)tips[k].menos[eid]=mh;}}
 function setTipMark(k,eid,d,mk){if(!tips[k])tips[k]={};if(!tips[k].marks)tips[k].marks={};if(!tips[k].marks[eid])tips[k].marks[eid]={};tips[k].marks[eid][d]=mk;}
+function setTipMenos(k,eid,hrs){if(!tips[k])tips[k]={};if(!tips[k].menos)tips[k].menos={};tips[k].menos[eid]=(tips[k].menos[eid]||0)+hrs;}
 function tipCurMark(k,eid,d){return (tips[k]&&tips[k].marks&&tips[k].marks[eid]&&tips[k].marks[eid][d])||null;}
-function tipHours(emp,mon){var h=0;for(var d=0;d<7;d++){var st=effStatus(emp.id,mon,d),base=hoursOfObj(st),mk=tipMark(emp.id,mon,d);if(mk==='falta'||mk==='faltaInj')base=0;h+=base;}return h;}
+function tipMenos(emp,mon){var k=weekKey(mon);if(tips[k]&&tips[k].marks){return (tips[k].menos&&tips[k].menos[emp.id])||0;}var pe=payEntry(emp.id,mon);return (pe&&pe.menosHrs)||0;}
+function tipHours(emp,mon){var h=0;for(var d=0;d<7;d++){var st=effStatus(emp.id,mon,d),base=hoursOfObj(st),mk=tipMark(emp.id,mon,d);if(mk==='falta'||mk==='faltaInj')base=0;else base+=(st&&st.xtH>0?st.xtH:0);h+=base;}return Math.max(0,h-tipMenos(emp,mon));}
 function tipFine(emp,mon){var f=0;for(var d=0;d<7;d++){var mk=tipMark(emp.id,mon,d);if(mk==='retardo')f+=tipRetFine();else if(mk==='faltaInj')f+=tipFiFine();}return f;}
 function tipFineDetail(emp,mon){var r=0,fi=0;for(var d=0;d<7;d++){var mk=tipMark(emp.id,mon,d);if(mk==='retardo')r++;else if(mk==='faltaInj')fi++;}return {ret:r,fi:fi,total:r*tipRetFine()+fi*tipFiFine()};}
 function tipPot(mon){var k=weekKey(mon),t=tips[k];if(!t)return 0;
@@ -2853,7 +2862,7 @@ function renderPropinas(){
       var acts=el('<div class="tipacts"><button class="btn primary" id="tipImg">📸 Resumen del reparto</button><button class="btn ghost" id="tipResp">📸 Responsables de recaudación</button>'+
         (rClosed?'<button class="btn ghost" id="tipReopen">🔓 Reabrir semana</button>':'<button class="btn ghost" id="tipClose">🔒 Cerrar semana (congelar reparto)</button>')+'</div>');
       pane.appendChild(acts);
-      acts.querySelector('#tipImg').addEventListener('click',function(){toast('Generando resumen…');drawTipsSummaryImage(function(cv){shareCanvas(cv,'propinas-'+iso(state.week)+'.png','Propinas '+fmtRange(state.week));});});
+      acts.querySelector('#tipImg').addEventListener('click',function(){toast('Generando resumen…');drawTipsSummaryImage(function(cv){previewImage(cv,'propinas-'+iso(state.week)+'.png','Reparto de propinas '+fmtRange(state.week));});});
       acts.querySelector('#tipResp').addEventListener('click',function(){toast('Generando imagen…');drawTipsResponsablesImage(function(cv){shareCanvas(cv,'responsables-'+iso(state.week)+'.png','Responsables '+fmtRange(state.week));});});
       var tcl=acts.querySelector('#tipClose');if(tcl)tcl.addEventListener('click',function(){closeTipWeek(state.week);toast('Semana cerrada — reparto congelado');renderPropinas();});
       var tro=acts.querySelector('#tipReopen');if(tro)tro.addEventListener('click',function(){reopenTipWeek(state.week);toast('Semana reabierta');renderPropinas();});
@@ -3127,7 +3136,11 @@ function openChecadorReview(analysis,parsed){
         if(toNom&&ent.days[o.d]!=='falta'&&ent.days[o.d]!=='faltaInj'){recNom(id,o.d,ent.days[o.d]);ent.days[o.d]='retardo';}
         if(tipWrite){var cur=tipCurMark(k,id,o.d);if(cur!=='falta'&&cur!=='faltaInj'){recTip(id,o.d,cur);setTipMark(k,id,o.d,'retardo');}}
         n++;}});
-      if(r.shortH>0&&toNom&&sc.querySelector('[data-ap="'+ri+'-short"]:checked')){applied.menos[id]=(applied.menos[id]||0)+r.shortH;ent.menosHrs=(ent.menosHrs||0)+r.shortH;n++;}
+      if(r.shortH>0&&sc.querySelector('[data-ap="'+ri+'-short"]:checked')){
+        if(toNom){applied.menos[id]=(applied.menos[id]||0)+r.shortH;ent.menosHrs=(ent.menosHrs||0)+r.shortH;}
+        if(tipWrite){applied.tipmenos=applied.tipmenos||{};applied.tipmenos[id]=(applied.tipmenos[id]||0)+r.shortH;setTipMenos(k,id,r.shortH);}
+        n++;
+      }
       if(toNom){var cF=0,cR=0,cFi=0;for(var d2=0;d2<7;d2++){if(ent.days[d2]==='falta')cF++;else if(ent.days[d2]==='faltaInj')cFi++;else if(ent.days[d2]==='retardo')cR++;}ent.faltas=cF;ent.faltasInj=cFi;ent.retardos=cR;}
       payroll[k][id]=ent;
     });
@@ -3147,6 +3160,7 @@ function undoChecadorApply(k){
   for(var idm in ap.menos){var e2=pk[idm];if(e2)e2.menosHrs=Math.max(0,(e2.menosHrs||0)-ap.menos[idm]);}
   for(var id3 in pk){var e3=pk[id3];if(e3&&e3.days){var cF=0,cR=0,cFi=0;for(var dd=0;dd<7;dd++){if(e3.days[dd]==='falta')cF++;else if(e3.days[dd]==='faltaInj')cFi++;else if(e3.days[dd]==='retardo')cR++;}e3.faltas=cF;e3.faltasInj=cFi;e3.retardos=cR;}}
   for(var idt in ap.tip){for(var dt in ap.tip[idt]){var pvt=ap.tip[idt][dt];if(pvt)setTipMark(k,idt,dt,pvt);else if(tips[k]&&tips[k].marks&&tips[k].marks[idt])delete tips[k].marks[idt][dt];}}
+  if(ap.tipmenos){for(var idtm in ap.tipmenos){if(tips[k]&&tips[k].menos)tips[k].menos[idtm]=Math.max(0,(tips[k].menos[idtm]||0)-ap.tipmenos[idtm]);}}
   delete rec.applied;delete rec.target;save();return true;
 }
 function openChecadorHistory(k){
