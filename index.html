@@ -1723,7 +1723,7 @@ function openPayrollSheet(empId){
     var d=ded();
     var baseLine = t==='hora' ? ('<input class="minnum" id="pHoras" type="number" inputmode="decimal" min="0" value="'+(entry.horas!=null?entry.horas:workedHours(emp.id,state.week))+'"> h × '+fmtMoney(r)+'/h')
       : ('<input class="minnum" id="pDias" type="number" inputmode="decimal" min="0" step="0.5" value="'+(entry.dias!=null?entry.dias:workedDays(emp.id,state.week))+'"> días × '+fmtMoney(t==='semanal'?r/6:r)+'/día'+(t==='semanal'?' (sem '+fmtMoney(r)+'÷6)':''));
-    var otHtml=entry.otros.map(function(x,i){return '<div class="liitem"><span>'+esc(x.c||'Ajuste')+'</span><span class="m">−'+fmtMoney(x.m||0)+'</span><button class="lpr" data-otr="'+i+'" title="Recibo de este descuento">📸</button><button class="rm" data-ot="'+i+'">×</button></div>';}).join('');
+    var otHtml=entry.otros.map(function(x,i){return '<div class="liitem"><span>'+esc(x.c||'Ajuste')+(x.date?(' <small style="color:#9a958a">· '+niceDate(x.date)+'</small>'):'')+'</span><span class="m">−'+fmtMoney(x.m||0)+'</span><button class="lpr" data-otr="'+i+'" title="Recibo de este descuento">📸</button><button class="rm" data-ot="'+i+'">×</button></div>';}).join('');
     function scol(label,key,val,sub,amt){return '<div class="scol"><div class="scl">'+label+'</div><div class="stepper sm"><button class="st" data-dec="'+key+'">−</button><span id="'+key+'Val">'+val+'</span><button class="st" data-inc="'+key+'">+</button></div><div class="scs">'+sub+'</div><div class="scamt">'+(amt>0?'−'+fmtMoney(amt):'')+'</div></div>';}
     var loanDone=emp.loan&&loanSaldoBefore(emp,state.week)<=0;
     var loanHtml = emp.loan
@@ -1780,7 +1780,7 @@ function openPayrollSheet(empId){
       if(next==='ok')delete entry.days[d];else entry.days[d]=next;
       paint();
     });});
-    sc.querySelector('#otAdd').addEventListener('click',function(){var m=parseFloat(sc.querySelector('#otMonto').value)||0;if(m<=0){toast('Pon el monto');return;}entry.otros.push({m:m,c:sc.querySelector('#otConc').value.trim()});paint();});
+    sc.querySelector('#otAdd').addEventListener('click',function(){var m=parseFloat(sc.querySelector('#otMonto').value)||0;if(m<=0){toast('Pon el monto');return;}entry.otros.push({m:m,c:sc.querySelector('#otConc').value.trim(),date:iso(new Date())});paint();});
     sc.querySelectorAll('.rm[data-ot]').forEach(function(b){b.addEventListener('click',function(){entry.otros.splice(parseInt(b.getAttribute('data-ot'),10),1);paint();});});
     sc.querySelectorAll('[data-otr]').forEach(function(b){b.addEventListener('click',function(){var i=parseInt(b.getAttribute('data-otr'),10),o=entry.otros[i];if(!o||!o.m){toast('Sin monto');return;}commitEntry();toast('Generando recibo…');drawOtroImage(emp.id,o,function(cv){shareCanvas(cv,'descuento-'+emp.name.split(' ')[0]+'.png','Comprobante de descuento · '+emp.name.split(' ')[0]);});});});
     function commitEntry(){var k=weekKey(state.week);if(!payroll[k])payroll[k]={};
@@ -2648,7 +2648,7 @@ function drawLoanImage(empId,kind,wk,cb){
 }
 function drawOtroImage(empId,o,cb){
   var e=byId(empId);if(!e)return;
-  var rows=[['Empleado',e.name],['Fecha',niceDate(iso(new Date()))],['Semana de aplicación',fmtRange(state.week)],['Concepto',o.c||'Ajuste']];
+  var rows=[['Empleado',e.name],['Fecha',niceDate(o.date||iso(new Date()))],['Semana de aplicación',fmtRange(state.week)],['Concepto',o.c||'Ajuste']];
   var scale=3,W=900,pad=44,rowH=52,headH=150,bigH=90;
   var H=pad+headH+rows.length*rowH+bigH+pad+30;
   var cv=document.createElement('canvas');cv.width=W*scale;cv.height=H*scale;
