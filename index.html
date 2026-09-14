@@ -1668,6 +1668,12 @@ function setTab(t){
     else if(t==='propinas')renderPropinas();
     else if(t==='ajustes')renderAjustes();
   }catch(e){showRenderError(t==='cal'?'semanaView':t==='plantilla'?'plantillaList':t==='nomina'?'nominaContent':t==='propinas'?'propinasContent':'tab-ajustes',e);}
+  try{
+    if(!_popping){
+      if(t!=='cal'&&!_tabPushed){_tabPushed=true;history.pushState({tab:1},'');}
+      else if(t==='cal'){_tabPushed=false;}
+    }
+  }catch(e){}
   window.scrollTo(0,0);
 }
 
@@ -4085,6 +4091,30 @@ function showFatal(msg){
     var fr=document.getElementById('fatalReset');if(fr)fr.onclick=function(){try{localStorage.clear();}catch(e){}location.reload();};
   }catch(e){}
 }
+/* ---------- gestos: botón/gesto Atrás ---------- */
+var _sheetPushed=false,_popping=false,_tabPushed=false;
+function initGestures(){
+  if(!scrim)return;
+  try{history.replaceState({root:1},'');}catch(e){}
+  // observa apertura/cierre de cajones para sincronizar el historial
+  try{
+    new MutationObserver(function(){
+      var open=scrim.classList.contains('show');
+      if(open&&!_sheetPushed){_sheetPushed=true;try{history.pushState({sheet:1},'');}catch(e){}}
+      else if(!open&&_sheetPushed&&!_popping){_popping=true;_sheetPushed=false;try{history.back();}catch(e){}}
+    }).observe(scrim,{attributes:true,attributeFilter:['class']});
+  }catch(e){}
+  window.addEventListener('popstate',function(){
+    if(_popping){_popping=false;return;}          // fue nuestro history.back() al cerrar por código
+    if(scrim.classList.contains('show')){          // hay cajón abierto -> ciérralo
+      _sheetPushed=false;closeSheet();return;
+    }
+    if(state.tab&&state.tab!=='cal'){               // no hay cajón -> vuelve a Calendario
+      setTab('cal');return;
+    }
+    // en Calendario sin cajón: dejar salir (no re-empujamos)
+  });
+}
 (function boot(){
   try{loadSedes();applySedeKeys(sede);}catch(e){}
   try{loadData();}
@@ -4093,6 +4123,7 @@ function showFatal(msg){
   try{setTab('cal');}
   catch(e){showRenderError('semanaView',e);}
   try{initRestDrag();}catch(e){}
+  try{initGestures();}catch(e){}
 })();
 </script>
 </body>
