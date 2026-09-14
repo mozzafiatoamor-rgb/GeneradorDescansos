@@ -1823,7 +1823,8 @@ function renderNomina(){
     emps.forEach(function(e){
       if(e.area!==lastArea){card=el('<div class="areacard"></div>');card.appendChild(el('<div class="ah"><span class="dot" style="background:'+AREAS[e.area].color+'"></span><span class="an">'+AREAS[e.area].short+'</span></div>'));host.appendChild(card);lastArea=e.area;}
       var n=netPay(e,state.week),d=deductions(e,state.week),hasRate=payRate(e)>0,paid=isPaid(e,state.week);
-      var sub=hasRate?('Base '+fmtMoney(basePay(e,state.week))+(d.total>0?' · −'+fmtMoney(d.total):'')):'Falta configurar sueldo';
+      var ex=extraPay(e,state.week);
+      var sub=hasRate?('Base '+fmtMoney(basePay(e,state.week))+(ex>0?' · +'+fmtMoney(ex)+' extra':'')+(d.total>0?' · −'+fmtMoney(d.total):'')):'Falta configurar sueldo';
       var row=el('<div class="nomrow'+(paid?' paid':'')+'" data-emp="'+e.id+'"><div class="nm">'+esc(e.name)+(e.mgr?' <span class="star">★</span>':'')+(paid?' <span class="paidtag">PAGADO</span>':'')+'<span class="sub">'+sub+'</span></div><div class="net'+(hasRate?'':' nr')+'">'+(hasRate?fmtMoney(n):'—')+'<span class="ch">›</span></div></div>');
       card.appendChild(row);
     });
@@ -1838,6 +1839,7 @@ function openPayrollSheet(empId){
   if(!entry.otros)entry.otros=[];
   if(typeof entry.retardos!=='number')entry.retardos=(entry.retardos&&entry.retardos.length)?entry.retardos.length:0;
   if(entry.faltasInj==null)entry.faltasInj=0;
+  if(entry.extraManual&&entry.extraHrs===calExtraHours(empId,state.week))delete entry.extraManual;
   entry.extraHrs=(entry.extraManual&&entry.extraHrs!=null)?entry.extraHrs:calExtraHours(empId,state.week);
   if(entry.menosHrs==null)entry.menosHrs=0;
   if(emp.loan&&entry.abono==null&&!entry.paid){var _sb=loanSaldoBefore(emp,state.week);if(_sb>0)entry.abono=Math.min(emp.loan.abono||0,_sb);}
