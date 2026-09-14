@@ -33,7 +33,9 @@
   --body:'Archivo',system-ui,-apple-system,sans-serif;
 }
 html{color-scheme:dark}
-body.sede-casaregina{--ink:#0F3A4B;--ink-2:#17546A}body.sede-casaregina .sedebtn.on{color:#0F3A4B}
+body.sede-casaregina{--accent:#E4B457;--accent-2:#C79433;--accent-ink:#241A05;--plum:#E4B457;--plum-ink:#C79433;--barra:#E4B457;--ok:#E4B457;--glow:0 0 0 1px rgba(228,180,87,.28),0 6px 24px rgba(228,180,87,.16)}
+body.sede-casaregina .sedebtn.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+body.sede-casaregina .topbar{background:linear-gradient(180deg,#1C1913,#121016)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
 body{
@@ -532,6 +534,10 @@ input,select,textarea{color:var(--ink)}
 .paidtoggle{background:rgba(44,230,217,.10)!important;border:1px solid rgba(44,230,217,.32)!important;color:var(--ink)!important}
 .paidtoggle *{color:var(--ink)!important}
 .paidtoggle .swt span{background:var(--line-2)!important}
+
+
+/* toast / avisos */
+.toast{background:var(--carbon)!important;color:var(--ink)!important;border:1px solid var(--line-2);box-shadow:var(--shadow-lg)}
 
 </style>
 </head>
@@ -1900,7 +1906,7 @@ function openPayrollSheet(empId){
       : '<button class="mini add" id="addLoan">+ Agregar préstamo</button>';
 
     sc.innerHTML=
-      '<div class="shead"><div class="t">'+esc(emp.name)+(emp.mgr?' ★':'')+' <button id="payImg" class="miniimg" title="Imagen para enviar">📸</button></div><div class="s">'+AREAS[emp.area].short+' · '+SHIFTS[emp.shift].label+' · '+fmtRange(state.week)+'</div></div>'+
+      '<div class="shead"><div class="t">'+esc(emp.name)+(emp.mgr?' ★':'')+' <button id="payImg" class="miniimg" title="Imagen para enviar">📸</button> <button id="payHist" class="miniimg" title="Historial de nómina">📊</button></div><div class="s">'+AREAS[emp.area].short+' · '+SHIFTS[emp.shift].label+' · '+fmtRange(state.week)+'</div></div>'+
       '<div class="sbody">'+
         (r>0?'':'<div class="warnmini">Este empleado no tiene sueldo configurado. <b id="goPay">Configúralo aquí</b>.</div>')+
         '<div class="payblock"><div class="pbl">Pago base</div><div class="pbv">'+baseLine+'</div><div class="pbtot">'+fmtMoney(bp())+'</div></div>'+
@@ -1943,6 +1949,7 @@ function openPayrollSheet(empId){
       if(entry.days){entry.faltas=nF();entry.faltasInj=nFi();entry.retardos=nR();}
       if(!(entry.abono>0))delete entry.abonoDay;
       payroll[k][empId]=entry;save();}
+    var phist=sc.querySelector('#payHist');if(phist)phist.addEventListener('click',function(){toast('Generando historial…');drawPayHistoryImage(emp.id,function(cv){previewImage(cv,'historial-'+emp.name.split(' ')[0]+'.png','Historial de nómina · '+emp.name.split(' ')[0]);});});
     var pimg=sc.querySelector('#payImg');if(pimg)pimg.addEventListener('click',function(){
       commitEntry();
       toast('Generando recibo…');
@@ -2940,6 +2947,9 @@ function renderPropinas(){
     pane.appendChild(resp);
     var totbar=el('<div class="tiptot2"><span>Total recaudado</span><b id="tipTotView">'+fmtMoney(tipPot(state.week))+'</b></div>');
     pane.appendChild(totbar);
+    var recaudRow=el('<div class="tipacts" style="margin:0 0 10px"><button class="btn ghost" id="tipRecaud">📸 Resumen de lo recaudado</button></div>');
+    pane.appendChild(recaudRow);
+    recaudRow.querySelector('#tipRecaud').addEventListener('click',function(){toast('Generando resumen…');drawTipsCollectionImage(function(cv){previewImage(cv,'recaudado-'+iso(state.week)+'.png','Recaudado '+fmtRange(state.week));});});
     var cal=el('<div class="tipcal"></div>');
     function respDayHtml(d){
       var out='';
@@ -3599,6 +3609,99 @@ function gastoForm(id,defAmbito,back){
     e.date=date;e.ambito=amb;e.cat=cat;e.concepto=conc;e.monto=monto;e.mensual=mens;e.prorr=prorr;
     if(isNew)expenses.push(e);
     save();toast('Guardado');back&&back();
+  });
+}
+
+function drawPayHistoryImage(empId,cb){
+  var emp=byId(empId);if(!emp)return;
+  // recopilar últimas semanas con actividad o registro (máx 12)
+  var rows=[],wtot={base:0,extra:0,ded:0,net:0},cur=startOfWeek(state.week),n=0,scanned=0;
+  while(rows.length<12&&scanned<26){
+    var mon=addDays(cur,-7*scanned);scanned++;
+    var k=weekKey(mon),hasEnt=payroll[k]&&payroll[k][empId];
+    if(!activeInWeek(emp,mon)&&!hasEnt)continue;
+    if(payRate(emp)<=0&&!hasEnt)continue;
+    var base=basePay(emp,mon),extra=extraPay(emp,mon),ded=deductions(emp,mon).total,net=netPay(emp,mon);
+    if(base===0&&extra===0&&ded===0&&net===0&&!hasEnt)continue;
+    rows.push({mon:mon,base:base,extra:extra,ded:ded,net:net});
+    wtot.base+=base;wtot.extra+=extra;wtot.ded+=ded;wtot.net+=net;
+  }
+  rows.reverse();
+  var scale=3,W=1040,pad=44,headH=150,rowH=42;
+  var H=pad+headH+44+Math.max(rows.length,1)*rowH+120+pad;
+  var cv=document.createElement('canvas');cv.width=W*scale;cv.height=H*scale;
+  var x=cv.getContext('2d');x.scale(scale,scale);
+  x.fillStyle='#F0E9DC';x.fillRect(0,0,W,H);
+  function rr(px,py,pw,ph,rad){x.beginPath();x.moveTo(px+rad,py);x.arcTo(px+pw,py,px+pw,py+ph,rad);x.arcTo(px+pw,py+ph,px,py+ph,rad);x.arcTo(px,py+ph,px,py,rad);x.arcTo(px,py,px+pw,py,rad);x.closePath();}
+  withLogo(function(){
+    x.fillStyle='#fff';rr(pad,pad,W-pad*2,H-pad*2,18);x.fill();
+    var ix=pad+28,iw=W-pad*2-56,y=pad+34;
+    x.fillStyle='#16181D';rr(ix,y,120,54,12);x.fill();
+    if(window._logoImg&&window._logoImg.complete&&window._logoImg.naturalWidth){try{var lw=window._logoImg.naturalWidth,lh=window._logoImg.naturalHeight,ls=Math.min(100/lw,42/lh);x.drawImage(window._logoImg,ix+(120-lw*ls)/2,y+(54-lh*ls)/2,lw*ls,lh*ls);}catch(er){}}
+    else{x.fillStyle='#fff';x.font='700 16px Arial';x.textBaseline='middle';x.fillText('Mozzafiato',ix+12,y+27);}
+    x.textBaseline='alphabetic';x.fillStyle='#3D2B1A';x.font='700 22px Arial';x.fillText('Historial de nómina',ix+140,y+24);
+    x.fillStyle='#7A6040';x.font='500 15px Arial';x.fillText(emp.name,ix+140,y+46);
+    y+=80;
+    var cB=ix+iw*0.52,cE=ix+iw*0.68,cD=ix+iw*0.84,cN=ix+iw;
+    x.fillStyle='#8a8275';x.font='700 12px Arial';x.textBaseline='middle';x.textAlign='left';x.fillText('SEMANA',ix+4,y+14);
+    x.textAlign='right';x.fillText('BASE',cB,y+14);x.fillText('EXTRAS',cE,y+14);x.fillText('DESC.',cD,y+14);x.fillText('NETO',cN,y+14);
+    x.textAlign='left';y+=30;x.strokeStyle='#EAE3D5';x.lineWidth=1.5;x.beginPath();x.moveTo(ix,y);x.lineTo(ix+iw,y);x.stroke();y+=4;
+    if(!rows.length){x.fillStyle='#9a958a';x.font='500 15px Arial';x.textBaseline='middle';x.fillText('Sin registros de nómina.',ix+6,y+rowH/2);y+=rowH;}
+    rows.forEach(function(r,i){
+      if(i%2===0){x.fillStyle='#FAF8F3';rr(ix,y,iw,rowH-4,6);x.fill();}
+      var my=y+(rowH-4)/2;x.textBaseline='middle';
+      x.fillStyle='#2c2114';x.font='600 13px Arial';x.textAlign='left';x.fillText(fmtRange(r.mon),ix+8,my);
+      x.textAlign='right';x.fillStyle='#3D2B1A';x.font='500 13px Arial';x.fillText(fmtMoney(r.base),cB,my);
+      x.fillStyle=r.extra>0?'#1E7D74':'#b8b0a0';x.fillText(r.extra>0?('+'+fmtMoney(r.extra)):'—',cE,my);
+      x.fillStyle=r.ded>0?'#C0344B':'#b8b0a0';x.fillText(r.ded>0?('-'+fmtMoney(r.ded)):'—',cD,my);
+      x.fillStyle='#16181D';x.font='800 14px Arial';x.fillText(fmtMoney(r.net),cN,my);
+      x.textAlign='left';y+=rowH;
+    });
+    y+=8;x.strokeStyle='#EAE3D5';x.beginPath();x.moveTo(ix,y);x.lineTo(ix+iw,y);x.stroke();y+=16;
+    x.fillStyle='#16181D';rr(ix,y,iw,56,12);x.fill();
+    x.fillStyle='#EFE7D6';x.font='600 14px Arial';x.textBaseline='middle';x.textAlign='left';x.fillText('TOTAL PAGADO ('+rows.length+' semanas)',ix+16,y+28);
+    x.fillStyle='#fff';x.font='800 22px Arial';x.textAlign='right';x.fillText(fmtMoney(wtot.net),ix+iw-16,y+29);x.textAlign='left';
+    cb(cv);
+  });
+}
+function drawTipsCollectionImage(cb){
+  applyRolesForWeek(state.week);
+  var k=weekKey(state.week),WDF=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+  var rows=[],gtot=0;
+  for(var d=0;d<7;d++){var dd=tips[k]&&tips[k].days&&tips[k].days[d];var am=(dd&&dd.AM&&dd.AM.amt)||0,pm=(dd&&dd.PM&&dd.PM.amt)||0,t=am+pm;if(t>0||am||pm){rows.push({d:d,am:am,pm:pm,t:t});gtot+=t;}}
+  var scale=3,W=980,pad=44,headH=150,rowH=44;
+  var H=pad+headH+44+Math.max(rows.length,1)*rowH+120+pad;
+  var cv=document.createElement('canvas');cv.width=W*scale;cv.height=H*scale;
+  var x=cv.getContext('2d');x.scale(scale,scale);
+  x.fillStyle='#F0E9DC';x.fillRect(0,0,W,H);
+  function rr(px,py,pw,ph,rad){x.beginPath();x.moveTo(px+rad,py);x.arcTo(px+pw,py,px+pw,py+ph,rad);x.arcTo(px+pw,py+ph,px,py+ph,rad);x.arcTo(px,py+ph,px,py,rad);x.arcTo(px,py,px+pw,py,rad);x.closePath();}
+  withLogo(function(){
+    x.fillStyle='#fff';rr(pad,pad,W-pad*2,H-pad*2,18);x.fill();
+    var ix=pad+28,iw=W-pad*2-56,y=pad+34;
+    x.fillStyle='#16181D';rr(ix,y,120,54,12);x.fill();
+    if(window._logoImg&&window._logoImg.complete&&window._logoImg.naturalWidth){try{var lw=window._logoImg.naturalWidth,lh=window._logoImg.naturalHeight,ls=Math.min(100/lw,42/lh);x.drawImage(window._logoImg,ix+(120-lw*ls)/2,y+(54-lh*ls)/2,lw*ls,lh*ls);}catch(er){}}
+    else{x.fillStyle='#fff';x.font='700 16px Arial';x.textBaseline='middle';x.fillText('Mozzafiato',ix+12,y+27);}
+    x.textBaseline='alphabetic';x.fillStyle='#3D2B1A';x.font='700 22px Arial';x.fillText('Propina recaudada',ix+140,y+24);
+    x.fillStyle='#7A6040';x.font='500 15px Arial';x.fillText('Semana '+fmtRange(state.week),ix+140,y+46);
+    y+=80;
+    var cAM=ix+iw*0.55,cPM=ix+iw*0.78,cT=ix+iw;
+    x.fillStyle='#8a8275';x.font='700 12px Arial';x.textBaseline='middle';x.textAlign='left';x.fillText('DÍA',ix+4,y+14);
+    x.textAlign='right';x.fillText('MAÑANA',cAM,y+14);x.fillText('TARDE',cPM,y+14);x.fillText('TOTAL',cT,y+14);
+    x.textAlign='left';y+=30;x.strokeStyle='#EAE3D5';x.lineWidth=1.5;x.beginPath();x.moveTo(ix,y);x.lineTo(ix+iw,y);x.stroke();y+=4;
+    if(!rows.length){x.fillStyle='#9a958a';x.font='500 15px Arial';x.textBaseline='middle';x.fillText('Sin capturas esta semana.',ix+6,y+rowH/2);y+=rowH;}
+    rows.forEach(function(r,i){
+      if(i%2===0){x.fillStyle='#FAF8F3';rr(ix,y,iw,rowH-4,6);x.fill();}
+      var my=y+(rowH-4)/2;x.textBaseline='middle';
+      x.fillStyle='#2c2114';x.font='600 14px Arial';x.textAlign='left';x.fillText(WDF[r.d]+' '+addDays(state.week,r.d).getDate(),ix+8,my);
+      x.textAlign='right';x.fillStyle='#5a5346';x.font='500 13px Arial';x.fillText(r.am?fmtMoney(r.am):'—',cAM,my);x.fillText(r.pm?fmtMoney(r.pm):'—',cPM,my);
+      x.fillStyle='#16181D';x.font='800 14px Arial';x.fillText(fmtMoney(r.t),cT,my);
+      x.textAlign='left';y+=rowH;
+    });
+    y+=8;x.strokeStyle='#EAE3D5';x.beginPath();x.moveTo(ix,y);x.lineTo(ix+iw,y);x.stroke();y+=16;
+    x.fillStyle='#16181D';rr(ix,y,iw,56,12);x.fill();
+    x.fillStyle='#EFE7D6';x.font='600 15px Arial';x.textBaseline='middle';x.textAlign='left';x.fillText('TOTAL RECAUDADO EN LA SEMANA',ix+16,y+28);
+    x.fillStyle='#fff';x.font='800 24px Arial';x.textAlign='right';x.fillText(fmtMoney(gtot),ix+iw-16,y+29);x.textAlign='left';
+    cb(cv);
   });
 }
 
