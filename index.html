@@ -3436,7 +3436,7 @@ function empPayText(emp,mon){mon=mon||state.week;
   return L.join('\n');
 }
 
-function weeklyNomina(mon){applyRolesForWeek(mon);var t=0;roster(mon).forEach(function(e){t+=netPay(e,mon);});return Math.round(t*100)/100;}
+function weeklyNomina(mon){applyRolesForWeek(mon);var t=0;roster(mon).forEach(function(e){t+=netPay(e,mon)+deductions(e,mon).abono;});return Math.round(t*100)/100;}
 function openUtilSheet(){
   var mon=state.week,k=weekKey(mon);
   if(!util[k])util[k]={ventas:0,nomOver:null};
@@ -3446,7 +3446,7 @@ function openUtilSheet(){
   var loc=expWeekTotal(mon,'local'),forr=expWeekTotal(mon,'foraneo');
   var html='<div class="shead"><div class="t">Utilidad de la semana</div><div class="s">'+fmtRange(mon)+'</div></div><div class="sbody">'+
     '<div class="ufield"><label>Ventas de la semana</label><div class="uin"><span>$</span><input id="uVent" type="number" inputmode="decimal" min="0" value="'+(u.ventas||'')+'" placeholder="0"></div></div>'+
-    '<div class="ufield"><label>Nómina de la semana <button class="linkbtn sm" id="uNomAuto">usar calculada ('+fmtMoney(nomAuto)+')</button></label><div class="uin"><span>$</span><input id="uNom" type="number" inputmode="decimal" min="0" value="'+nomVal+'"></div></div>'+
+    '<div class="ufield"><label>Costo de nómina de la semana <button class="linkbtn sm" id="uNomAuto">usar calculado ('+fmtMoney(nomAuto)+')</button></label><div class="uin"><span>$</span><input id="uNom" type="number" inputmode="decimal" min="0" value="'+nomVal+'"></div></div>'+
     '<div class="gastosbox"><div class="gbh"><span>Gastos de la semana</span><button class="linkbtn sm" id="uGest">Gestionar</button></div>'+
       '<div class="urow neg"><span>Locales <small>('+expWeekList(mon,'local').length+')</small></span><b id="rLoc">'+fmtMoney(loc)+'</b></div>'+
       '<div class="urow neg"><span>Foráneos <small>('+expWeekList(mon,'foraneo').length+')</small></span><b id="rFor">'+fmtMoney(forr)+'</b></div></div>'+
@@ -3454,7 +3454,7 @@ function openUtilSheet(){
     '<div class="urow"><span>Ventas</span><b id="rVent">'+fmtMoney(u.ventas||0)+'</b></div>'+
     '<div class="urow neg"><span>− Gastos locales</span><b>'+fmtMoney(loc)+'</b></div>'+
     '<div class="urow neg"><span>− Gastos foráneos</span><b>'+fmtMoney(forr)+'</b></div>'+
-    '<div class="urow neg"><span>− Nómina</span><b id="rNom">'+fmtMoney(nomVal)+'</b></div>'+
+    '<div class="urow neg"><span>− Costo de nómina</span><b id="rNom">'+fmtMoney(nomVal)+'</b></div>'+
     '<div class="ubig"><span>Utilidad</span><b id="rUtil">'+fmtMoney((u.ventas||0)-loc-forr-nomVal)+'</b></div>'+
     '<div class="uacts"><button class="btn ghost" id="uImg">📸 Enviar resumen</button></div>'+
     '<div class="sheetfoot"><button class="btn primary" id="uClose">Listo</button></div></div>';
