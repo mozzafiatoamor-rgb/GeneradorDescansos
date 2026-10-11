@@ -1,0 +1,18 @@
+{
+  "name": "Gestor de Descansos",
+  "short_name": "Descansos",
+  "description": "Gestor de descansos, nómina, propinas y gastos — Mozzafiato y Casa Regina",
+  "lang": "es",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#16181D",
+  "theme_color": "#16181D",
+  "start_url": "./index.html",
+  "scope": "./",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
