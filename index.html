@@ -1021,14 +1021,18 @@ function tryLockPin(pin){
   else if(access.pinProp&&pin===access.pinProp){state.role='propinas';unlockTo();}
   else{if(msg)msg.textContent='PIN incorrecto, intenta de nuevo';lockEntry='';drawLockDots();try{navigator.vibrate&&navigator.vibrate(120);}catch(e){}}
 }
+var GRACE_MS=15*60*1000; // si sales y vuelves dentro de 15 min, no vuelve a pedir PIN
+function saveGrace(){try{localStorage.setItem('descgrace',JSON.stringify({t:Date.now(),role:(state.role||'admin')}));}catch(e){}}
+function clearGrace(){try{localStorage.removeItem('descgrace');}catch(e){}}
+function graceRole(){try{var g=JSON.parse(localStorage.getItem('descgrace')||'null');if(g&&g.t&&(Date.now()-g.t)<GRACE_MS)return (g.role==='propinas')?'propinas':'admin';}catch(e){}return '';}
 function unlockTo(){
-  hideLock();
+  hideLock();saveGrace();
   if(isProp()){ // forzar sede con propinas y abrir captura
     if(!sedeHasTips()){var m=sedes.filter(function(s){return s.tips!==false;})[0];if(m&&m.id!==sede){switchSede(m.id);}}
     state.tipTab='captura';renderSedeBar();applyRoleUI();setTab('propinas');
   }else{renderSedeBar();applyRoleUI();setTab(restoreView());}
 }
-function lockNow(){ if(access.on){ state.role='admin'; showLock(); } }
+function lockNow(){ if(access.on){ clearGrace(); state.role='admin'; showLock(); } }
 function renderAccessBox(){
   var host=document.getElementById('accessBox');if(!host)return;
   host.innerHTML=
@@ -4580,11 +4584,12 @@ function bootRender(){
   try{initGestures();}catch(e){}
   try{applyRoleUI();}catch(e){}
   try{
-    document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')saveView();});
-    window.addEventListener('pagehide',saveView);
+    function onLeave(){saveView();if(access.on&&state.role)saveGrace();} // al salir, arranca/renueva la gracia
+    document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')onLeave();});
+    window.addEventListener('pagehide',onLeave);
     window.addEventListener('blur',saveView);
   }catch(e){}
-  try{if(access.on&&(access.pinAdmin||access.pinProp)){state.role='';showLock();}}catch(e){}
+  try{if(access.on&&(access.pinAdmin||access.pinProp)){var gr=graceRole();if(gr){state.role=gr;unlockTo();}else{state.role='';showLock();}}}catch(e){}
 }
 function boot(){
   cloudCfgLoad();loadAccess();
