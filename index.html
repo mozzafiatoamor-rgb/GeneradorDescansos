@@ -563,6 +563,12 @@ input,select,textarea{color:var(--ink)}
 .lockpad{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 .lockpad .lk{height:64px;border-radius:16px;background:var(--surface-2);color:var(--ink);font-size:24px;font-weight:700;border:1px solid var(--line-2)}
 .lockpad .lk:active{background:var(--carbon-2)}
+.tipexcl{margin:10px 0 0;border:1px dashed var(--line-2);border-radius:14px;padding:12px 14px;background:var(--surface-2)}
+.tipexclt{font-size:13px;font-weight:700;color:var(--ink-2);margin-bottom:8px}
+.tipexclrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.tipexclrow:first-of-type{border-top:0}
+.tipexclinfo .nm{font-weight:600;color:var(--ink)}
+.tipexclinfo .tsub{font-size:12px;color:var(--ink-2);margin-top:2px}
 
 </style>
 </head>
@@ -3248,6 +3254,33 @@ function renderPropinas(){
           '<div class="tbtns"><button class="mini" data-tip="'+r.emp.id+'">📸 Comprobante</button></div></div>'));
       });
       pane.appendChild(box);
+      // Red de seguridad: activos esta semana que NO entran al reparto (0 h), con el motivo y arreglo
+      (function(){
+        var inList={};R.list.forEach(function(r){inList[r.emp.id]=1;});
+        var k2=weekKey(state.week);
+        var excl=roster(state.week).filter(function(e){return !inList[e.id];});
+        if(!excl.length)return;
+        var ebox=el('<div class="tipexcl"><div class="tipexclt">No entran al reparto esta semana</div></div>');
+        excl.forEach(function(e){
+          var nFaltas=0,nRet=0;
+          if(tips[k2]&&tips[k2].marks&&tips[k2].marks[e.id]){var mm=tips[k2].marks[e.id];for(var dk in mm){if(mm[dk]==='falta'||mm[dk]==='faltaInj')nFaltas++;else if(mm[dk]==='retardo')nRet++;}}
+          var menos=tipMenos(e,state.week);
+          var reason=[];
+          if(nFaltas)reason.push(nFaltas+' falta'+(nFaltas>1?'s':'')+' de propina');
+          if(nRet)reason.push(nRet+' retardo'+(nRet>1?'s':''));
+          if(menos)reason.push(menos+' h no trabajadas');
+          if(!reason.length)reason.push('0 h registradas esta semana');
+          var canFix=(nFaltas||nRet||menos)&&!rClosed;
+          var row=el('<div class="tipexclrow"><div class="tipexclinfo"><div class="nm">'+esc(e.name)+'</div><div class="tsub">'+reason.join(' · ')+'</div></div>'+(canFix?'<button class="mini" data-fix="'+e.id+'">Quitar incidencias</button>':'')+'</div>');
+          ebox.appendChild(row);
+        });
+        pane.appendChild(ebox);
+        ebox.querySelectorAll('[data-fix]').forEach(function(b){b.addEventListener('click',function(){
+          var id=b.getAttribute('data-fix');
+          if(tips[k2]){if(tips[k2].marks)delete tips[k2].marks[id];if(tips[k2].menos)delete tips[k2].menos[id];}
+          save();toast('Incidencias de propina quitadas — '+(byId(id)?byId(id).name:''));renderPropinas();
+        });});
+      })();
       pane.appendChild(el('<div class="tipsum">'+
         '<div class="tsr"><span>Bote de propina</span><b>'+fmtMoney(R.pot)+'</b></div>'+
         '<div class="tsr"><span>Horas totales</span><b>'+R.Htot+' h</b></div>'+
@@ -3513,6 +3546,10 @@ function openChecadorReview(analysis,parsed){
       if(target==='tip'){toast('La semana de propinas está cerrada; reábrela para aplicar');return;}
       toast('Propinas cerrada: se aplicará solo a nómina');target='nom';
     }
+    // Reemplazo real: si ya se aplicó una corrida del checador a esta semana, revertirla primero.
+    // Así los días que en la corrida anterior salieron como falta/retardo pero que en la nueva ya
+    // no lo son (p. ej. el empleado ya trae checadas), se LIMPIAN en vez de quedarse pegados.
+    if(chk[k]&&chk[k].applied)undoChecadorApply(k);
     var toNom=(target!=='tip'),toTip=(target!=='nom');
     if(target!=='both')ensureTipMarksSnapshot(k); // al separar, congela propinas tal como están
     var tipWrite=toTip&&(target!=='both'||(tips[k]&&tips[k].marks)); // en 'both' solo escribe marcas si la semana ya está separada
