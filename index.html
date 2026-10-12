@@ -3509,7 +3509,7 @@ function openChecadorReview(analysis,parsed){
   var html='<div class="shead"><div class="t">Revisar checadas</div><div class="s">Semana '+fmtRange(mon)+'</div></div><div class="sbody">';
   html+='<div class="hint" style="margin-bottom:8px">Desmarca lo que NO quieras aplicar. Lo marcado se guardará en la nómina.</div>';
   if(weekKey(mon)!==weekKey(state.week))html+='<div class="chkwarn">⚠️ Este archivo es de la semana <b>'+fmtRange(mon)+'</b>, distinta a la que tenías abierta ('+fmtRange(state.week)+'). Al aplicar se guardará en la semana del archivo. Si no era este archivo, cierra sin aplicar.</div>';
-  if(chk[weekKey(mon)])html+='<div class="chkwarn">Ya hay checadas guardadas de esta semana; al aplicar se <b>reemplazarán</b>.</div>';
+  if(chk[weekKey(mon)])html+='<div class="chkwarn">Ya hay checadas guardadas de esta semana. Al aplicar se <b>reemplaza el canal que elijas</b> (nómina o propinas) sin borrar el otro.</div>';
   if(analysis.unmatched.length)html+='<div class="chkwarn">Sin emparejar (pon su número de reloj en la ficha): '+esc(analysis.unmatched.join(', '))+'</div>';
   if(!analysis.rows.length)html+='<div class="empty">No se encontraron coincidencias.</div>';
   analysis.rows.forEach(function(r,ri){
@@ -3546,13 +3546,16 @@ function openChecadorReview(analysis,parsed){
       if(target==='tip'){toast('La semana de propinas está cerrada; reábrela para aplicar');return;}
       toast('Propinas cerrada: se aplicará solo a nómina');target='nom';
     }
-    // Reemplazo real: si ya se aplicó una corrida del checador a esta semana, revertirla primero.
-    // Así los días que en la corrida anterior salieron como falta/retardo pero que en la nueva ya
-    // no lo son (p. ej. el empleado ya trae checadas), se LIMPIAN en vez de quedarse pegados.
-    if(chk[k]&&chk[k].applied)undoChecadorApply(k);
     var toNom=(target!=='tip'),toTip=(target!=='nom');
     if(target!=='both')ensureTipMarksSnapshot(k); // al separar, congela propinas tal como están
     var tipWrite=toTip&&(target!=='both'||(tips[k]&&tips[k].marks)); // en 'both' solo escribe marcas si la semana ya está separada
+    // Reemplazo real POR CANAL: revierte solo el canal (nómina o propinas) que vamos a reescribir,
+    // conservando el otro. Así una nueva corrida limpia lo viejo de ESE canal sin borrar el otro,
+    // y puedes aplicar a nómina una cosa y a propinas otra distinta.
+    if(chk[k]&&chk[k].applied){
+      var undoScope=(toNom&&tipWrite)?'both':(toNom?'nom':'tip');
+      undoChecadorApply(k,undoScope);
+    }
     var applied={nom:{},tip:{},menos:{}};
     function recNom(id,d,prev){if(!applied.nom[id])applied.nom[id]={};if(!(d in applied.nom[id]))applied.nom[id][d]=(prev||null);}
     function recTip(id,d,prev){if(!applied.tip[id])applied.tip[id]={};if(!(d in applied.tip[id]))applied.tip[id][d]=(prev||null);}
@@ -3576,7 +3579,17 @@ function openChecadorReview(analysis,parsed){
       if(toNom){var cF=0,cR=0,cFi=0;for(var d2=0;d2<7;d2++){if(ent.days[d2]==='falta')cF++;else if(ent.days[d2]==='faltaInj')cFi++;else if(ent.days[d2]==='retardo')cR++;}ent.faltas=cF;ent.faltasInj=cFi;ent.retardos=cR;}
       payroll[k][id]=ent;
     });
-    if(parsed){chk[k]={periodStart:parsed.periodStart,at:new Date().toISOString(),blocks:parsed.blocks,applied:applied,target:target};}
+    if(parsed){
+      var prevAp=(chk[k]&&chk[k].applied)?chk[k].applied:null; // lo que quedó del canal que NO tocamos
+      if(prevAp){
+        if(!toNom){applied.nom=prevAp.nom||{};applied.menos=prevAp.menos||{};}
+        if(!tipWrite){applied.tip=prevAp.tip||{};if(prevAp.tipmenos)applied.tipmenos=prevAp.tipmenos;}
+      }
+      var hasNom=Object.keys(applied.nom||{}).length||Object.keys(applied.menos||{}).length;
+      var hasTip=Object.keys(applied.tip||{}).length||(applied.tipmenos&&Object.keys(applied.tipmenos).length);
+      var effTarget=(hasNom&&hasTip)?'both':(hasNom?'nom':(hasTip?'tip':target));
+      chk[k]={periodStart:parsed.periodStart,at:new Date().toISOString(),blocks:parsed.blocks,applied:applied,target:effTarget};
+    }
     save();closeSheet();state.week=mon;
     setTab(target==='tip'?'propinas':'nomina');
     toast(n+' cambios aplicados '+(target==='tip'?'a propinas':target==='nom'?'a nómina':'a nómina y propinas'));
@@ -3585,15 +3598,26 @@ function openChecadorReview(analysis,parsed){
   var bn=sc.querySelector('#chkApplyNom');if(bn)bn.addEventListener('click',function(){applyChecador('nom');});
   var bt=sc.querySelector('#chkApplyTip');if(bt)bt.addEventListener('click',function(){applyChecador('tip');});
 }
-function undoChecadorApply(k){
+function undoChecadorApply(k,scope){
+  scope=scope||'both';var doNom=(scope==='both'||scope==='nom'),doTip=(scope==='both'||scope==='tip');
   var rec=chk[k];if(!rec||!rec.applied)return false;
   var ap=rec.applied,pk=payroll[k]||{};
-  for(var id in ap.nom){var ent=pk[id];if(ent&&ent.days){for(var d in ap.nom[id]){var pv=ap.nom[id][d];if(pv)ent.days[d]=pv;else delete ent.days[d];}}}
-  for(var idm in ap.menos){var e2=pk[idm];if(e2)e2.menosHrs=Math.max(0,(e2.menosHrs||0)-ap.menos[idm]);}
-  for(var id3 in pk){var e3=pk[id3];if(e3&&e3.days){var cF=0,cR=0,cFi=0;for(var dd=0;dd<7;dd++){if(e3.days[dd]==='falta')cF++;else if(e3.days[dd]==='faltaInj')cFi++;else if(e3.days[dd]==='retardo')cR++;}e3.faltas=cF;e3.faltasInj=cFi;e3.retardos=cR;}}
-  for(var idt in ap.tip){for(var dt in ap.tip[idt]){var pvt=ap.tip[idt][dt];if(pvt)setTipMark(k,idt,dt,pvt);else if(tips[k]&&tips[k].marks&&tips[k].marks[idt])delete tips[k].marks[idt][dt];}}
-  if(ap.tipmenos){for(var idtm in ap.tipmenos){if(tips[k]&&tips[k].menos)tips[k].menos[idtm]=Math.max(0,(tips[k].menos[idtm]||0)-ap.tipmenos[idtm]);}}
-  delete rec.applied;delete rec.target;save();return true;
+  if(doNom){
+    for(var id in ap.nom){var ent=pk[id];if(ent&&ent.days){for(var d in ap.nom[id]){var pv=ap.nom[id][d];if(pv)ent.days[d]=pv;else delete ent.days[d];}}}
+    for(var idm in ap.menos){var e2=pk[idm];if(e2)e2.menosHrs=Math.max(0,(e2.menosHrs||0)-ap.menos[idm]);}
+    for(var id3 in pk){var e3=pk[id3];if(e3&&e3.days){var cF=0,cR=0,cFi=0;for(var dd=0;dd<7;dd++){if(e3.days[dd]==='falta')cF++;else if(e3.days[dd]==='faltaInj')cFi++;else if(e3.days[dd]==='retardo')cR++;}e3.faltas=cF;e3.faltasInj=cFi;e3.retardos=cR;}}
+    ap.nom={};ap.menos={};
+  }
+  if(doTip){
+    for(var idt in ap.tip){for(var dt in ap.tip[idt]){var pvt=ap.tip[idt][dt];if(pvt)setTipMark(k,idt,dt,pvt);else if(tips[k]&&tips[k].marks&&tips[k].marks[idt])delete tips[k].marks[idt][dt];}}
+    if(ap.tipmenos){for(var idtm in ap.tipmenos){if(tips[k]&&tips[k].menos)tips[k].menos[idtm]=Math.max(0,(tips[k].menos[idtm]||0)-ap.tipmenos[idtm]);}}
+    ap.tip={};ap.tipmenos={};
+  }
+  // Si ya no queda nada aplicado en ningún canal, limpiar el registro
+  var leftNom=Object.keys(ap.nom||{}).length||Object.keys(ap.menos||{}).length;
+  var leftTip=Object.keys(ap.tip||{}).length||(ap.tipmenos&&Object.keys(ap.tipmenos).length);
+  if(!leftNom&&!leftTip){delete rec.applied;delete rec.target;}
+  save();return true;
 }
 function openChecadorHistory(k){
   var rec=chk[k];if(!rec){toast('Sin checadas guardadas esta semana');return;}
@@ -3626,7 +3650,7 @@ function openChecadorHistory(k){
     if((chk[k].target==='tip'||chk[k].target==='both')&&tips[k]&&tips[k].closed){toast('Propinas cerrada; reábrela antes de editar');return;}
     var parsed={periodStart:rec.periodStart,blocks:rec.blocks};
     state.week=mon;
-    if(rec.applied){undoChecadorApply(k);toast('Se revirtió lo aplicado — vuelve a decidir');}
+    if(rec.applied){toast('Vuelve a decidir — al aplicar se reemplaza el canal que elijas (nómina o propinas) sin tocar el otro');}
     else{
       // import anterior a la función de deshacer: limpiar marcas de esa semana (best-effort)
       var a0=analyzeChecador(parsed,retTol()),pk=payroll[k]||{};
