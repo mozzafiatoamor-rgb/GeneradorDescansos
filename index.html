@@ -3169,14 +3169,19 @@ function renderPropinas(){
     var rs=respStruct(k);
     var closed=tipWeekClosed(state.week);
     if(closed){var cb2=el('<div class="chkwarn" style="display:flex;justify-content:space-between;align-items:center;gap:8px">🔒 Semana cerrada. Para editar montos o responsables, reábrela.<button class="mini" id="tipReopen1">Reabrir</button></div>');pane.appendChild(cb2);cb2.querySelector('#tipReopen1').addEventListener('click',function(){reopenTipWeek(state.week);renderPropinas();});}
-    function opt2(sel){return '<option value="">—</option>'+ppl.map(function(e){return '<option value="'+e.id+'"'+(sel===e.id?' selected':'')+'>'+esc(e.name)+'</option>';}).join('');}
+    function opt2(turno,slot,sel){
+      var ar=respAreasFor(slot); // r1 = piso/barra, r2 = cocina
+      var list=ppl.filter(function(e){return worksTurnoSomeDay(e,turno)&&ar.indexOf(e.area)>=0;});
+      if(sel&&!list.some(function(e){return e.id===sel;})){var se=byId(sel);if(se)list=[se].concat(list);} // conserva al ya elegido aunque no cumpla el filtro
+      return '<option value="">—</option>'+list.map(function(e){return '<option value="'+e.id+'"'+(sel===e.id?' selected':'')+'>'+esc(e.name)+'</option>';}).join('');
+    }
     var resp=el('<div class="respcard"><div class="rch">Responsables de la semana</div>'+
       '<div class="rcturno">Mañana</div>'+
-      '<div class="rcrow"><label>Barra/Piso</label><select data-rb="AM-r1">'+opt2(rs.AM.r1)+'</select></div>'+
-      '<div class="rcrow"><label>Cocina</label><select data-rb="AM-r2">'+opt2(rs.AM.r2)+'</select></div>'+
+      '<div class="rcrow"><label>Barra/Piso</label><select data-rb="AM-r1">'+opt2('AM','r1',rs.AM.r1)+'</select></div>'+
+      '<div class="rcrow"><label>Cocina</label><select data-rb="AM-r2">'+opt2('AM','r2',rs.AM.r2)+'</select></div>'+
       '<div class="rcturno">Tarde</div>'+
-      '<div class="rcrow"><label>Barra/Piso</label><select data-rb="PM-r1">'+opt2(rs.PM.r1)+'</select></div>'+
-      '<div class="rcrow"><label>Cocina</label><select data-rb="PM-r2">'+opt2(rs.PM.r2)+'</select></div>'+
+      '<div class="rcrow"><label>Barra/Piso</label><select data-rb="PM-r1">'+opt2('PM','r1',rs.PM.r1)+'</select></div>'+
+      '<div class="rcrow"><label>Cocina</label><select data-rb="PM-r2">'+opt2('PM','r2',rs.PM.r2)+'</select></div>'+
       '<button class="btn ghost" id="respAvisar">📢 Avisar al grupo</button>'+
       '<button class="btn primary" id="respRolImg" style="margin-top:6px">📸 Enviar rol de propina</button></div>');
     pane.appendChild(resp);
@@ -3714,17 +3719,22 @@ function empWeekText(emp,mon){mon=mon||state.week;applyRolesForWeek(mon);
   return lines.join('\n');
 }
 function empPayText(emp,mon){mon=mon||state.week;
-  var ded=deductions(emp,mon),extra=extraPay(emp,mon),base=basePay(emp,mon),net=netPay(emp,mon);
+  // Mismo desglose que la imagen del recibo: el primer renglón es lo GANADO por días/horas
+  // trabajados (no el "sueldo base"), para que el texto no confunda.
+  var ent=payEntry(emp.id,mon)||{},t=payType(emp,mon),r=payRate(emp,mon);
+  var b=basePay(emp,mon),ex=extraPay(emp,mon),d=deductions(emp,mon),net=netPay(emp,mon),vh=valorDia(emp,mon)/8;
   var L=['*'+emp.name+'* — tu nómina','_Semana '+fmtRange(mon)+'_',''];
-  L.push('Sueldo base: '+fmtMoney(base));
-  if(extra>0)L.push('Horas extra: '+fmtMoney(extra));
-  if(ded.retN)L.push('Retardos ('+ded.retN+'): -'+fmtMoney(ded.retardo));
-  if(ded.fN)L.push('Faltas ('+ded.fN+'): -'+fmtMoney(ded.falta));
-  if(ded.fiN)L.push('Faltas injustificadas ('+ded.fiN+'): -'+fmtMoney(ded.faltaInj));
-  if(ded.menosHrs)L.push('Horas no trabajadas: -'+fmtMoney(ded.menosHrs));
-  if(ded.otro)L.push('Otros descuentos: -'+fmtMoney(ded.otro));
-  if(ded.abono)L.push('Abono a préstamo: -'+fmtMoney(ded.abono));
+  if(t==='hora'){var hh=(ent.horas!=null)?ent.horas:workedHours(emp.id,mon);L.push('Horas trabajadas ('+hh+' × '+fmtMoney(r)+'): '+fmtMoney(b));}
+  else{var dd=(ent.dias!=null)?ent.dias:workedDays(emp.id,mon);L.push('Días trabajados ('+dd+' × '+fmtMoney(t==='semanal'?r/6:r)+'): '+fmtMoney(b));}
+  if(ex)L.push('Horas extra ('+extraHoursOf(emp,mon)+'h × '+fmtMoney(vh)+'): +'+fmtMoney(ex));
+  if(d.menosHrs)L.push('Horas no trabajadas ('+(ent.menosHrs||0)+'h × '+fmtMoney(vh)+'): -'+fmtMoney(d.menosHrs));
+  if(d.falta)L.push('Faltas ('+d.fN+'): -'+fmtMoney(d.falta));
+  if(d.faltaInj)L.push('Faltas injustificadas ('+d.fiN+', doble): -'+fmtMoney(d.faltaInj));
+  if(d.retardo)L.push('Retardos ('+d.retN+' × $50): -'+fmtMoney(d.retardo));
+  (ent.otros||[]).forEach(function(o){if(o.m)L.push('Otro: '+(o.c||'—')+': -'+fmtMoney(o.m));});
+  if(d.abono)L.push('Abono a préstamo: -'+fmtMoney(d.abono));
   L.push('','*Neto a recibir: '+fmtMoney(net)+'*');
+  if(emp.loan){var sb=loanSaldoBefore(emp,mon),sa=Math.max(0,sb-(d.abono||0));L.push('_Saldo del préstamo: '+fmtMoney(sa)+'_');}
   return L.join('\n');
 }
 
