@@ -2,7 +2,7 @@
    Estrategia: red primero para el shell (así siempre baja la última versión),
    con respaldo a caché cuando no hay internet. El tráfico de otros orígenes
    (Supabase, CDN del SDK, Google Fonts) pasa directo a la red sin tocar. */
-var CACHE = 'descansos-v131';
+var CACHE = 'descansos-v132';
 var SHELL = [
   './index.html',
   './manifest.webmanifest',

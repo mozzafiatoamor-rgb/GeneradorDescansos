@@ -1030,7 +1030,7 @@ function unlockTo(){
   if(isProp()){ // forzar sede con propinas y abrir captura
     if(!sedeHasTips()){var m=sedes.filter(function(s){return s.tips!==false;})[0];if(m&&m.id!==sede){switchSede(m.id);}}
     state.tipTab='captura';renderSedeBar();applyRoleUI();setTab('propinas');
-  }else{renderSedeBar();applyRoleUI();setTab(restoreView());}
+  }else{renderSedeBar();applyRoleUI();setTab(restoreView());restoreOpenSheet();}
 }
 function lockNow(){ if(access.on){ clearGrace(); state.role='admin'; showLock(); } }
 function renderAccessBox(){
@@ -1517,8 +1517,8 @@ function renderAjustes(){
 
 /* ---------- sheets ---------- */
 var scrim=document.getElementById('scrim'),sheet=document.getElementById('sheet'),sc=document.getElementById('sheetContent');
-function openSheet(html){sc.innerHTML=html;scrim.classList.add('show');sheet.classList.add('show');}
-function closeSheet(){scrim.classList.remove('show');sheet.classList.remove('show');}
+function openSheet(html){openCtx=null;sc.innerHTML=html;scrim.classList.add('show');sheet.classList.add('show');}
+function closeSheet(){openCtx=null;scrim.classList.remove('show');sheet.classList.remove('show');}
 scrim.addEventListener('click',closeSheet);
 
 function openCellSheet(empId,dayIdx){
@@ -1885,7 +1885,15 @@ function renderSedeBar(){
   var np=document.getElementById('nav-propinas');if(np)np.style.display=sedeHasTips()?'':'none';
   applySedeTheme();
 }
-function saveView(){try{localStorage.setItem('desc.lastview',JSON.stringify({tab:state.tab,week:iso(state.week),sede:sede,ts:Date.now()}));}catch(e){}}
+var openCtx=null; // cajón restaurable abierto (p. ej. hoja de pago de un empleado)
+function saveView(){try{localStorage.setItem('desc.lastview',JSON.stringify({tab:state.tab,week:iso(state.week),sede:sede,open:openCtx,ts:Date.now()}));}catch(e){}}
+function restoreOpenSheet(){ // reabre la hoja del empleado si saliste con ella abierta hace poco
+  try{
+    var v=JSON.parse(localStorage.getItem('desc.lastview')||'null');
+    if(!v||!v.open||!v.ts||(Date.now()-v.ts)>=8*3600*1000)return;
+    if(v.open.type==='pay'&&v.open.empId&&!isProp()&&byId(v.open.empId)){openPayrollSheet(v.open.empId);}
+  }catch(e){}
+}
 function setTab(t){
   if(isProp())t='propinas'; // rol propinas: solo captura de propinas
   state.tab=t;
@@ -2314,7 +2322,7 @@ function openPayrollSheet(empId){
     });
   }
   function updatePbtot(){var pt=sc.querySelector('.pbtot');if(pt)pt.textContent=fmtMoney(bp());}
-  openSheet('');paint();
+  openSheet('');openCtx={type:'pay',empId:empId};paint();
 }
 
 
@@ -4681,7 +4689,7 @@ function bootRender(){
     window.addEventListener('pagehide',onLeave);
     window.addEventListener('blur',saveView);
   }catch(e){}
-  try{if(access.on&&(access.pinAdmin||access.pinProp)){var gr=graceRole();if(gr){state.role=gr;unlockTo();}else{state.role='';showLock();}}}catch(e){}
+  try{if(access.on&&(access.pinAdmin||access.pinProp)){var gr=graceRole();if(gr){state.role=gr;unlockTo();}else{state.role='';showLock();}}else{restoreOpenSheet();}}catch(e){}
 }
 function boot(){
   cloudCfgLoad();loadAccess();
