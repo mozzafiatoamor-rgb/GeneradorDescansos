@@ -569,6 +569,10 @@ input,select,textarea{color:var(--ink)}
 .tipexclrow:first-of-type{border-top:0}
 .tipexclinfo .nm{font-weight:600;color:var(--ink)}
 .tipexclinfo .tsub{font-size:12px;color:var(--ink-2);margin-top:2px}
+.respcard .rcrow{align-items:flex-start}
+.rcsel{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0}
+.rcsel select{flex:none;width:100%}
+.rchint{font-size:11px;color:var(--muted)}
 
 </style>
 </head>
@@ -3193,6 +3197,39 @@ function respStruct(k){if(!tips[k])tips[k]={};var t=tips[k];
   return t.resp;}
 function worksDayTurno(emp,d,turno){if(!emp)return false;var st=effStatus(emp.id,state.week,d).st;if(st==='rest'||st==='closed')return false;var du=effDuty(emp,d,state.week);return presentInTurno(du,turno);}
 function respAreasFor(slot){return slot==='r1'?['piso','barra']:['cocina'];}
+// Historial de responsables de propina: cuántas veces y la última semana que le tocó a cada quien
+function respHistory(beforeK){
+  var h={};
+  Object.keys(tips).forEach(function(k){
+    if(beforeK&&k>=beforeK)return; // solo semanas anteriores a la que se propone
+    var r=tips[k]&&tips[k].resp;if(!r)return;
+    ['AM','PM'].forEach(function(tn){if(!r[tn])return;['r1','r2'].forEach(function(sl){var id=r[tn][sl];if(!id)return;if(!h[id])h[id]={count:0,last:''};h[id].count++;if(k>h[id].last)h[id].last=k;});});
+  });
+  return h;
+}
+function respHint(id,beforeK){ // texto corto: cuándo le tocó por última vez
+  if(!id)return '';
+  var r=respHistory(beforeK)[id];
+  if(!r||!r.last)return 'nunca le ha tocado';
+  var p=r.last.split('-');return 'últ.: '+(+p[2])+'/'+(+p[1])+' · '+r.count+(r.count>1?' veces':' vez');
+}
+// Propone responsables rotando: primero quien nunca o hace más tiempo fue responsable, sin repetir en la semana
+function proposeResp(mon){
+  var k=weekKey(mon),hist=respHistory(k),used={},res={AM:{r1:'',r2:''},PM:{r1:'',r2:''}};
+  ['AM','PM'].forEach(function(tn){['r1','r2'].forEach(function(sl){
+    var ar=respAreasFor(sl);
+    var cands=roster(mon).filter(function(e){return worksTurnoSomeDay(e,tn)&&ar.indexOf(e.area)>=0&&!used[e.id];});
+    if(!cands.length)return;
+    cands.sort(function(a,b){
+      var ha=hist[a.id]||{count:0,last:''},hb=hist[b.id]||{count:0,last:''};
+      if(ha.last!==hb.last)return ha.last<hb.last?-1:1; // '' (nunca) primero, luego la más antigua
+      if(ha.count!==hb.count)return ha.count-hb.count;  // menos veces
+      return a.name.localeCompare(b.name);
+    });
+    res[tn][sl]=cands[0].id;used[cands[0].id]=1;
+  });});
+  return res;
+}
 function replCandidates(d,turno,slot,excludeId){var ar=respAreasFor(slot);return roster(state.week).filter(function(e){return e.id!==excludeId&&worksDayTurno(e,d,turno)&&ar.indexOf(effDuty(e,d,state.week).area)>=0;});}
 function effResp(k,d,turno,slot){var base=respStruct(k)[turno][slot];
   var cov=(tips[k].days&&tips[k].days[d]&&tips[k].days[d][turno]&&tips[k].days[d][turno].cov&&tips[k].days[d][turno].cov[slot])||'';
@@ -3265,16 +3302,22 @@ function renderPropinas(){
       if(sel&&!list.some(function(e){return e.id===sel;})){var se=byId(sel);if(se)list=[se].concat(list);} // conserva al ya elegido aunque no cumpla el filtro
       return '<option value="">—</option>'+list.map(function(e){return '<option value="'+e.id+'"'+(sel===e.id?' selected':'')+'>'+esc(e.name)+'</option>';}).join('');
     }
+    function rcrow(lbl,tn,sl){var id=rs[tn][sl];return '<div class="rcrow"><label>'+lbl+'</label><div class="rcsel"><select data-rb="'+tn+'-'+sl+'">'+opt2(tn,sl,id)+'</select><div class="rchint">'+esc(respHint(id,k))+'</div></div></div>';}
     var resp=el('<div class="respcard"><div class="rch">Responsables de la semana</div>'+
+      (closed?'':'<button class="btn ghost" id="respPropose" style="margin-bottom:10px">✨ Proponer (rota a quien no le ha tocado)</button>')+
       '<div class="rcturno">Mañana</div>'+
-      '<div class="rcrow"><label>Barra/Piso</label><select data-rb="AM-r1">'+opt2('AM','r1',rs.AM.r1)+'</select></div>'+
-      '<div class="rcrow"><label>Cocina</label><select data-rb="AM-r2">'+opt2('AM','r2',rs.AM.r2)+'</select></div>'+
+      rcrow('Barra/Piso','AM','r1')+
+      rcrow('Cocina','AM','r2')+
       '<div class="rcturno">Tarde</div>'+
-      '<div class="rcrow"><label>Barra/Piso</label><select data-rb="PM-r1">'+opt2('PM','r1',rs.PM.r1)+'</select></div>'+
-      '<div class="rcrow"><label>Cocina</label><select data-rb="PM-r2">'+opt2('PM','r2',rs.PM.r2)+'</select></div>'+
+      rcrow('Barra/Piso','PM','r1')+
+      rcrow('Cocina','PM','r2')+
       '<button class="btn ghost" id="respAvisar">📢 Avisar al grupo</button>'+
       '<button class="btn primary" id="respRolImg" style="margin-top:6px">📸 Enviar rol de propina</button></div>');
     pane.appendChild(resp);
+    var rpp=resp.querySelector('#respPropose');if(rpp)rpp.addEventListener('click',function(){
+      if(closed){toast('Semana cerrada — reábrela para editar');return;}
+      var prop=proposeResp(state.week);rs.AM=prop.AM;rs.PM=prop.PM;save();toast('Propuesta lista — rotando a quien no le tocaba');renderPropinas();
+    });
     var totbar=el('<div class="tiptot2"><span>Total recaudado</span><b id="tipTotView">'+fmtMoney(tipPot(state.week))+'</b></div>');
     pane.appendChild(totbar);
     var recaudRow=el('<div class="tipacts" style="margin:0 0 10px"><button class="btn ghost" id="tipRecaud">📸 Resumen de lo recaudado</button></div>');
