@@ -573,6 +573,12 @@ input,select,textarea{color:var(--ink)}
 .rcsel{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0}
 .rcsel select{flex:none;width:100%}
 .rchint{font-size:11px;color:var(--muted)}
+.autobaks{margin-top:8px;max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+.abrow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-top:1px solid var(--line)}
+.abrow:first-child{border-top:0}
+.abinfo b{font-size:12.5px;color:var(--ink);display:block}
+.abinfo small{font-size:11px;color:var(--muted)}
+.abbtns{display:flex;gap:6px;flex-shrink:0}
 
 </style>
 </head>
@@ -744,6 +750,10 @@ input,select,textarea{color:var(--ink)}
       <div class="sh">Respaldo de datos</div>
       <div id="backupStatus"></div>
       <div class="setrow">
+        <div class="hint">La app guarda <b>respaldos automáticos</b> en este dispositivo (en cada cambio y antes de traer datos de la nube). Si algo se sobreescribe, restaura aquí:</div>
+        <div id="autoBaksBox" class="autobaks"></div>
+      </div>
+      <div class="setrow">
         <div class="hint">Los datos viven <b>solo en este dispositivo/navegador</b>. Si borras datos del navegador, cambias de celular o desinstalas, se pierden. Exporta seguido y guarda el archivo en Google Drive o envíatelo por WhatsApp.</div>
         <div class="ctl btnrow">
           <button class="btn ghost" id="exportBtn">Exportar respaldo</button>
@@ -812,6 +822,7 @@ var _storeSet=store.set;
 store.set=function(k,v){_storeSet.call(store,k,v);if(cloud.on&&cloud.user&&cloud.ready&&cloudSyncable(k)){cloud.dirty[k]=v;cloudSchedulePush();}};
 function storeSetLocal(k,v){_storeSet.call(store,k,v);} // escribe sin re-sincronizar (usado al traer de la nube)
 function cloudSchedulePush(){if(cloud.timer)clearTimeout(cloud.timer);cloud.timer=setTimeout(cloudPush,900);}
+function cloudFlush(){if(cloud.on&&cloud.user&&cloud.ready&&Object.keys(cloud.dirty).length){if(cloud.timer)clearTimeout(cloud.timer);try{cloudPush();}catch(e){}}} // sube pendientes ya (al salir de la app)
 function cloudSetStatus(s){cloud.status=s;try{var el=document.getElementById('cloudStatus');if(el)renderCloudBox();}catch(e){}}
 function loadSupabaseSDK(){return new Promise(function(res,rej){
   if(window.supabase&&window.supabase.createClient){res();return;}
@@ -821,15 +832,17 @@ function loadSupabaseSDK(){return new Promise(function(res,rej){
 });}
 function cloudInit(){return loadSupabaseSDK().then(function(){
   if(!cloud.url||!cloud.key)throw new Error('Falta URL o clave');
-  cloud.sb=window.supabase.createClient(cloud.url,cloud.key);
+  cloud.sb=window.supabase.createClient(cloud.url,cloud.key,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'desc.sb.auth'}});
   return cloud.sb.auth.getSession().then(function(r){cloud.user=(r&&r.data&&r.data.session)?r.data.session.user:null;cloud.ready=true;return cloud.user;});
 });}
 function cloudLogin(email,pass){return cloudInit().then(function(){return cloud.sb.auth.signInWithPassword({email:email,password:pass});}).then(function(r){if(r.error)throw r.error;cloud.user=r.data.user;cloud.on=true;cloudCfgSave();return cloud.user;});}
 function cloudLogout(){if(!cloud.sb)return Promise.resolve();return cloud.sb.auth.signOut().then(function(){cloud.user=null;cloud.on=false;cloudCfgSave();});}
-function cloudPull(){ // trae todo de la nube a local
+function cloudPull(){ // trae todo de la nube a local (respalda lo local ANTES de sobreescribir)
   if(!cloud.sb||!cloud.user)return Promise.resolve(0);
-  return cloud.sb.from('descansos_kv').select('k,v').eq('owner',cloud.user.id).then(function(r){
-    if(r.error)throw r.error;var n=0;(r.data||[]).forEach(function(row){storeSetLocal(row.k,row.v);n++;});return n;
+  return autoBackup('antes de traer de la nube',true).then(function(){
+    return cloud.sb.from('descansos_kv').select('k,v').eq('owner',cloud.user.id).then(function(r){
+      if(r.error)throw r.error;var n=0;(r.data||[]).forEach(function(row){storeSetLocal(row.k,row.v);n++;});return n;
+    });
   });
 }
 function cloudPush(){ // sube pendientes
@@ -916,7 +929,37 @@ function writeSedeSnapshot(id,d){if(!isObj(d))return;var kk=sedeKeys(id);
   store.set(kk.pay,isObj(d.payroll)?d.payroll:{});store.set(kk.tips,isObj(d.tips)?d.tips:{});
   store.set(kk.chk,isObj(d.chk)?d.chk:{});store.set(kk.util,isObj(d.util)?d.util:{});
   store.set(kk.exp,Array.isArray(d.expenses)?d.expenses:[]);if(isObj(d.cfg))store.set(kk.cfg,d.cfg);}
-function fullSnapshot(){save();return {type:'full',v:1,ts:new Date().toISOString(),sedes:sedes.slice(),data:sedes.map(function(s){return {id:s.id,name:s.name,snap:sedeSnapshot(s.id)};})};}
+function buildFullSnapshot(){return {type:'full',v:1,ts:new Date().toISOString(),sedes:sedes.slice(),data:sedes.map(function(s){return {id:s.id,name:s.name,snap:sedeSnapshot(s.id)};})};}
+function fullSnapshot(){save();return buildFullSnapshot();}
+/* ---------- respaldos automáticos (IndexedDB, para no saturar el almacenamiento) ---------- */
+var IDB={db:null},_lastBakTs=0,BAK_KEEP=24;
+function idbOpen(){
+  if(IDB.db)return Promise.resolve(IDB.db);
+  return new Promise(function(res,rej){
+    try{
+      if(!window.indexedDB){rej(new Error('sin IndexedDB'));return;}
+      var req=indexedDB.open('descbaks',1);
+      req.onupgradeneeded=function(){var db=req.result;if(!db.objectStoreNames.contains('baks'))db.createObjectStore('baks',{keyPath:'id',autoIncrement:true});};
+      req.onsuccess=function(){IDB.db=req.result;res(IDB.db);};
+      req.onerror=function(){rej(req.error);};
+    }catch(e){rej(e);}
+  });
+}
+function idbAdd(rec){return idbOpen().then(function(db){return new Promise(function(res,rej){var tx=db.transaction('baks','readwrite');tx.objectStore('baks').add(rec);tx.oncomplete=function(){res();};tx.onerror=function(){rej(tx.error);};});});}
+function idbAll(){return idbOpen().then(function(db){return new Promise(function(res,rej){var tx=db.transaction('baks','readonly');var rq=tx.objectStore('baks').getAll();rq.onsuccess=function(){res(rq.result||[]);};rq.onerror=function(){rej(rq.error);};});});}
+function idbGet(id){return idbOpen().then(function(db){return new Promise(function(res,rej){var tx=db.transaction('baks','readonly');var rq=tx.objectStore('baks').get(id);rq.onsuccess=function(){res(rq.result||null);};rq.onerror=function(){rej(rq.error);};});});}
+function idbDel(id){return idbOpen().then(function(db){return new Promise(function(res){var tx=db.transaction('baks','readwrite');tx.objectStore('baks')['delete'](id);tx.oncomplete=function(){res();};tx.onerror=function(){res();};});});}
+function idbPrune(max){return idbAll().then(function(all){all.sort(function(a,b){return a.id-b.id;});var over=all.length-max,p=Promise.resolve();for(var i=0;i<over;i++){(function(id){p=p.then(function(){return idbDel(id);});})(all[i].id);}return p;});}
+// Crea un respaldo. Throttled a 1 cada 10 min salvo force. No llama save() (evita recursión desde save()).
+function autoBackup(reason,force){
+  try{
+    var now=Date.now();
+    if(!force&&(now-_lastBakTs)<10*60*1000)return Promise.resolve();
+    _lastBakTs=now;
+    var snap=buildFullSnapshot();snap.reason=reason||'';
+    return idbAdd({ts:snap.ts,reason:reason||'',data:snap}).then(function(){return idbPrune(BAK_KEEP);}).catch(function(){});
+  }catch(e){return Promise.resolve();}
+}
 
 /* ---------- constants ---------- */
 var AREAS={piso:{label:'Piso (meseros)',short:'Piso',color:'#3B6FB6'},
@@ -988,7 +1031,7 @@ function loadData(){
   if(!Array.isArray(cfg.expCats))cfg.expCats=['Honorarios contables','Compra foránea','Renta','Servicios (luz/agua/gas)','Internet/telefonía','Insumos','Mantenimiento','Impuestos','Publicidad','Otros'];
   if(!base){base=generateBase();store.set(K.base,base);}
 }
-function save(){store.set(K.emp,employees);store.set(K.base,base);store.set(K.weeks,weeks);store.set(K.closed,closedDays);store.set(K.pay,payroll);store.set(K.tips,tips);store.set(K.chk,chk);store.set(K.util,util);store.set(K.exp,expenses);store.set(K.cfg,cfg);store.set(K.autobak,snapshotData());}
+function save(){store.set(K.emp,employees);store.set(K.base,base);store.set(K.weeks,weeks);store.set(K.closed,closedDays);store.set(K.pay,payroll);store.set(K.tips,tips);store.set(K.chk,chk);store.set(K.util,util);store.set(K.exp,expenses);store.set(K.cfg,cfg);store.set(K.autobak,snapshotData());try{autoBackup('cambios');}catch(e){}}
 
 /* ---------- dates ---------- */
 function startOfWeek(d){var x=new Date(d.getFullYear(),d.getMonth(),d.getDate());var k=(x.getDay()+6)%7;x.setDate(x.getDate()-k);return x;}
@@ -1506,6 +1549,7 @@ function renderAjustes(){
   var efd=document.getElementById('empFiDbl');if(efd){efd.checked=!(FE.fiDoubleDay===false);efd.onchange=function(){cfg.finesEmp.fiDoubleDay=this.checked;save();};}
   var eds=document.getElementById('empDisc');if(eds){eds.checked=!(FE.discTime===false);eds.onchange=function(){cfg.finesEmp.discTime=this.checked;save();};}
   renderBackupStatus();
+  renderAutoBaks();
   renderCloudBox();
   renderAccessBox();
   renderBajas();
@@ -4608,6 +4652,39 @@ function renderBackupStatus(){
   else{txt='✓ Última copia: '+fmtDateTime(last)+'.';cls='ok';}
   host.innerHTML='<div class="bakstatus '+cls+'">'+txt+'</div>';
 }
+function applyFullBackupObj(d){
+  if(!isObj(d)||!Array.isArray(d.data))return false;
+  if(Array.isArray(d.sedes)&&d.sedes.length){sedes=d.sedes.slice();store.set(SEDES_KEY,sedes);}
+  d.data.forEach(function(x){writeSedeSnapshot(x.id,x.snap);});
+  applySedeKeys(sede);loadData();renderSedeBar();setTab(state.tab);
+  return true;
+}
+function renderAutoBaks(){
+  var host=document.getElementById('autoBaksBox');if(!host)return;
+  host.innerHTML='<div class="hint">Cargando respaldos…</div>';
+  idbAll().then(function(all){
+    all.sort(function(a,b){return b.id-a.id;});
+    if(!all.length){host.innerHTML='<div class="hint">Aún no hay respaldos automáticos. Aparecerán conforme hagas cambios.</div>';return;}
+    host.innerHTML=all.slice(0,24).map(function(r){
+      var reason=r.reason?(' · '+esc(r.reason)):'';
+      return '<div class="abrow"><div class="abinfo"><b>'+esc(fmtDateTime(r.ts))+'</b><small>'+reason+'</small></div>'+
+        '<div class="abbtns"><button class="mini" data-abrest="'+r.id+'">Restaurar</button><button class="mini" data-abexp="'+r.id+'">⬇️</button></div></div>';
+    }).join('');
+    host.querySelectorAll('[data-abrest]').forEach(function(b){b.addEventListener('click',function(){
+      var id=+b.getAttribute('data-abrest');
+      idbGet(id).then(function(r){if(!r||!r.data){toast('No se pudo leer el respaldo');return;}
+        if(!confirm('¿Restaurar el respaldo del '+fmtDateTime(r.ts)+'?\n\nReemplaza los datos actuales de este dispositivo con los de ese respaldo. (Primero se guarda un respaldo de lo actual.)'))return;
+        autoBackup('antes de restaurar',true).then(function(){
+          if(applyFullBackupObj(r.data)){toast('Respaldo restaurado');renderAjustes();}else toast('Respaldo no válido');
+        });
+      });
+    });});
+    host.querySelectorAll('[data-abexp]').forEach(function(b){b.addEventListener('click',function(){
+      var id=+b.getAttribute('data-abexp');
+      idbGet(id).then(function(r){if(!r||!r.data)return;var blob=new Blob([JSON.stringify(r.data,null,2)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='respaldo-auto-'+(''+r.ts).slice(0,19).replace(/[:T]/g,'-')+'.json';a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},1000);toast('Respaldo exportado');});
+    });});
+  }).catch(function(){host.innerHTML='<div class="hint">Los respaldos automáticos no están disponibles en este navegador.</div>';});
+}
 function slugSede(){return (sedeObj().name||sede||'sede').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');}
 document.getElementById('exportBtn').addEventListener('click',function(){
   var data=snapshotData();
@@ -4727,7 +4804,7 @@ function bootRender(){
   try{initGestures();}catch(e){}
   try{applyRoleUI();}catch(e){}
   try{
-    function onLeave(){saveView();if(access.on&&state.role)saveGrace();} // al salir, arranca/renueva la gracia
+    function onLeave(){saveView();if(access.on&&state.role)saveGrace();cloudFlush();} // al salir: guarda vista, gracia y sube pendientes
     document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')onLeave();});
     window.addEventListener('pagehide',onLeave);
     window.addEventListener('blur',saveView);
