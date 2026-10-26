@@ -836,14 +836,47 @@ function cloudInit(){return loadSupabaseSDK().then(function(){
   return cloud.sb.auth.getSession().then(function(r){cloud.user=(r&&r.data&&r.data.session)?r.data.session.user:null;cloud.ready=true;return cloud.user;});
 });}
 function cloudLogin(email,pass){return cloudInit().then(function(){return cloud.sb.auth.signInWithPassword({email:email,password:pass});}).then(function(r){if(r.error)throw r.error;cloud.user=r.data.user;cloud.on=true;cloudCfgSave();return cloud.user;});}
-function cloudLogout(){if(!cloud.sb)return Promise.resolve();return cloud.sb.auth.signOut().then(function(){cloud.user=null;cloud.on=false;cloudCfgSave();});}
-function cloudPull(){ // trae todo de la nube a local (respalda lo local ANTES de sobreescribir)
-  if(!cloud.sb||!cloud.user)return Promise.resolve(0);
-  return autoBackup('antes de traer de la nube',true).then(function(){
-    return cloud.sb.from('descansos_kv').select('k,v').eq('owner',cloud.user.id).then(function(r){
-      if(r.error)throw r.error;var n=0;(r.data||[]).forEach(function(row){storeSetLocal(row.k,row.v);n++;});return n;
-    });
+function cloudLogout(){if(_cloudRefreshTimer){clearInterval(_cloudRefreshTimer);_cloudRefreshTimer=null;}if(cloud.rt){try{cloud.sb.removeChannel(cloud.rt);}catch(e){}cloud.rt=null;}if(!cloud.sb)return Promise.resolve();return cloud.sb.auth.signOut().then(function(){cloud.user=null;cloud.on=false;cloudCfgSave();});}
+function cloudPullCore(){ // baja de la nube y aplica SOLO lo que cambió (no toca lo que ya está igual)
+  if(!cloud.sb||!cloud.user)return Promise.resolve({n:0,changed:0});
+  return cloud.sb.from('descansos_kv').select('k,v').eq('owner',cloud.user.id).then(function(r){
+    if(r.error)throw r.error;var n=0,changed=0;
+    (r.data||[]).forEach(function(row){n++;var cur;try{cur=JSON.parse(localStorage.getItem(row.k));}catch(e){cur=undefined;}
+      if(JSON.stringify(cur)!==JSON.stringify(row.v)){storeSetLocal(row.k,row.v);changed++;}});
+    return {n:n,changed:changed};
   });
+}
+function cloudPull(){ // manual/arranque: respalda lo local ANTES de sobreescribir, y aplica todo
+  if(!cloud.sb||!cloud.user)return Promise.resolve(0);
+  return autoBackup('antes de traer de la nube',true).then(cloudPullCore).then(function(res){return res.n;});
+}
+// Refresco automático: trae datos frescos sin que tengas que reabrir la app
+function cloudAutoRefresh(){
+  if(!cloud.on||!cloud.user||!cloud.ready)return;
+  try{if(document.hidden)return;}catch(e){}                       // solo en primer plano
+  if(typeof scrim!=='undefined'&&scrim&&scrim.classList.contains('show'))return; // no interrumpir si estás editando un cajón
+  if(cloud.dirty&&Object.keys(cloud.dirty).length)return;         // no pisar cambios tuyos sin subir
+  if(cloud.status==='sync'||cloud._refreshing)return;
+  cloud._refreshing=true;
+  cloudPullCore().then(function(res){
+    cloud._refreshing=false;
+    if(res.changed){loadSedes();applySedeKeys(sede);loadData();renderSedeBar();setTab(state.tab);toast('Datos actualizados');}
+  }).catch(function(){cloud._refreshing=false;});
+}
+var _cloudRefreshTimer=null;
+function cloudStartAutoRefresh(){
+  if(_cloudRefreshTimer)clearInterval(_cloudRefreshTimer);
+  _cloudRefreshTimer=setInterval(cloudAutoRefresh,20000); // cada 20 s mientras la app está abierta
+  cloudStartRealtime(); // además, al instante cuando el otro dispositivo escribe (si Realtime está activo en Supabase)
+}
+function cloudStartRealtime(){
+  try{
+    if(!cloud.sb||!cloud.user||!cloud.sb.channel)return;
+    if(cloud.rt){try{cloud.sb.removeChannel(cloud.rt);}catch(e){}cloud.rt=null;}
+    cloud.rt=cloud.sb.channel('kv-'+cloud.user.id)
+      .on('postgres_changes',{event:'*',schema:'public',table:'descansos_kv',filter:'owner=eq.'+cloud.user.id},function(){cloudAutoRefresh();})
+      .subscribe();
+  }catch(e){}
 }
 function cloudPush(){ // sube pendientes
   if(!cloud.sb||!cloud.user){return Promise.resolve();}
@@ -904,7 +937,7 @@ function renderCloudBox(){
           }else{return cloudPushAll();}
         }else{return cloudPushAll();} // nube vacía: subir lo local
       });
-    }).then(function(){cloud.ready=true;cloudSetStatus('ok');toast('Conectado a la nube ✓');renderCloudBox();})
+    }).then(function(){cloud.ready=true;cloudSetStatus('ok');cloudStartAutoRefresh();toast('Conectado a la nube ✓');renderCloudBox();})
     .catch(function(e){var m=(e&&e.message)||e;if(msg)msg.textContent='No se pudo conectar: '+m;toast('Error: '+m);});
   });
 }
@@ -4805,7 +4838,7 @@ function bootRender(){
   try{applyRoleUI();}catch(e){}
   try{
     function onLeave(){saveView();if(access.on&&state.role)saveGrace();cloudFlush();} // al salir: guarda vista, gracia y sube pendientes
-    document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')onLeave();});
+    document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')onLeave();else cloudAutoRefresh();});
     window.addEventListener('pagehide',onLeave);
     window.addEventListener('blur',saveView);
   }catch(e){}
@@ -4815,7 +4848,7 @@ function boot(){
   cloudCfgLoad();loadAccess();
   if(cloud.on&&cloud.url&&cloud.key){
     cloudInit().then(function(){
-      if(cloud.user){return cloudPull().then(function(){cloudSetStatus('ok');});}
+      if(cloud.user){return cloudPull().then(function(){cloudSetStatus('ok');cloudStartAutoRefresh();});}
     }).catch(function(){}).then(function(){bootRender();});
   }else{
     bootRender();
