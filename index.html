@@ -579,6 +579,8 @@ input,select,textarea{color:var(--ink)}
 .abinfo b{font-size:12.5px;color:var(--ink);display:block}
 .abinfo small{font-size:11px;color:var(--muted)}
 .abbtns{display:flex;gap:6px;flex-shrink:0}
+.remember{display:flex;gap:8px;align-items:flex-start;margin:4px 0 10px;font-size:12px;color:var(--muted);line-height:1.35}
+.remember input{margin-top:2px;flex-shrink:0}
 
 </style>
 </head>
@@ -818,6 +820,11 @@ function cloudNormUrl(u){return (u||'').trim().replace(/\/rest\/v1\/?$/,'').repl
 function cloudCfgLoad(){try{var c=JSON.parse(localStorage.getItem('desc.cloud.cfg')||'null');if(c){cloud.url=c.url||'';cloud.key=c.key||'';cloud.on=!!c.on;}}catch(e){}
   if(!cloud.url)cloud.url=CLOUD_DEFAULT_URL;if(!cloud.key)cloud.key=CLOUD_DEFAULT_KEY;cloud.url=cloudNormUrl(cloud.url);}
 function cloudCfgSave(){try{localStorage.setItem('desc.cloud.cfg',JSON.stringify({url:cloud.url,key:cloud.key,on:cloud.on}));}catch(e){}}
+// Credenciales recordadas SOLO en este dispositivo (para auto-reconectar si se cae la sesión). El usuario lo activa.
+function cloudCredSave(email,pass){try{localStorage.setItem('desc.cloud.cred',btoa(unescape(encodeURIComponent(JSON.stringify({e:email,p:pass})))));}catch(e){}}
+function cloudCredGet(){try{var raw=localStorage.getItem('desc.cloud.cred');if(!raw)return null;var c=JSON.parse(decodeURIComponent(escape(atob(raw))));if(c&&c.e&&c.p)return c;}catch(e){}return null;}
+function cloudCredClear(){try{localStorage.removeItem('desc.cloud.cred');}catch(e){}}
+function cloudHasCred(){return !!cloudCredGet();}
 var _storeSet=store.set;
 store.set=function(k,v){_storeSet.call(store,k,v);if(cloud.on&&cloud.user&&cloud.ready&&cloudSyncable(k)){cloud.dirty[k]=v;cloudSchedulePush();}};
 function storeSetLocal(k,v){_storeSet.call(store,k,v);} // escribe sin re-sincronizar (usado al traer de la nube)
@@ -833,10 +840,22 @@ function loadSupabaseSDK(){return new Promise(function(res,rej){
 function cloudInit(){return loadSupabaseSDK().then(function(){
   if(!cloud.url||!cloud.key)throw new Error('Falta URL o clave');
   cloud.sb=window.supabase.createClient(cloud.url,cloud.key,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'desc.sb.auth'}});
+  try{cloud.sb.auth.onAuthStateChange(function(ev){ // si se cae la sesión y hay credenciales recordadas, vuelve a entrar sola
+    if(ev==='SIGNED_OUT'&&!_cloudRelogging&&cloudHasCred()){
+      cloudTryRelogin().then(function(ok){if(ok){cloudPull().then(function(){cloudSetStatus('ok');cloudStartAutoRefresh();try{renderCloudBox();}catch(e){}});}});
+    }
+  });}catch(e){}
   return cloud.sb.auth.getSession().then(function(r){cloud.user=(r&&r.data&&r.data.session)?r.data.session.user:null;cloud.ready=true;return cloud.user;});
 });}
 function cloudLogin(email,pass){return cloudInit().then(function(){return cloud.sb.auth.signInWithPassword({email:email,password:pass});}).then(function(r){if(r.error)throw r.error;cloud.user=r.data.user;cloud.on=true;cloudCfgSave();return cloud.user;});}
-function cloudLogout(){if(_cloudRefreshTimer){clearInterval(_cloudRefreshTimer);_cloudRefreshTimer=null;}if(cloud.rt){try{cloud.sb.removeChannel(cloud.rt);}catch(e){}cloud.rt=null;}if(!cloud.sb)return Promise.resolve();return cloud.sb.auth.signOut().then(function(){cloud.user=null;cloud.on=false;cloudCfgSave();});}
+var _cloudRelogging=false;
+function cloudTryRelogin(){ // reconecta solo, usando las credenciales recordadas en ESTE dispositivo
+  if(_cloudRelogging)return Promise.resolve(false);
+  var cr=cloudCredGet();if(!cr)return Promise.resolve(false);
+  _cloudRelogging=true;
+  return cloudLogin(cr.e,cr.p).then(function(){_cloudRelogging=false;return true;}).catch(function(){_cloudRelogging=false;return false;});
+}
+function cloudLogout(){cloudCredClear();if(_cloudRefreshTimer){clearInterval(_cloudRefreshTimer);_cloudRefreshTimer=null;}if(cloud.rt){try{cloud.sb.removeChannel(cloud.rt);}catch(e){}cloud.rt=null;}if(!cloud.sb)return Promise.resolve();return cloud.sb.auth.signOut().then(function(){cloud.user=null;cloud.on=false;cloudCfgSave();});}
 function cloudPullCore(){ // baja de la nube y aplica SOLO lo que cambió (no toca lo que ya está igual)
   if(!cloud.sb||!cloud.user)return Promise.resolve({n:0,changed:0});
   return cloud.sb.from('descansos_kv').select('k,v').eq('owner',cloud.user.id).then(function(r){
@@ -900,9 +919,18 @@ function renderCloudBox(){
   var host=document.getElementById('cloudBox');if(!host)return;
   if(cloud.user){
     var st=cloud.status==='sync'?'Sincronizando…':cloud.status==='ok'?'Al día ✓':cloud.status==='error'?'Error al sincronizar':'Conectado';
+    var rem=cloudHasCred();
     host.innerHTML='<div class="bakstatus ok" style="margin-bottom:8px">Conectado como <b>'+esc(cloud.user.email||'')+'</b> · '+st+'</div>'+
-      '<div class="ctl btnrow"><button class="btn ghost" id="clPush">Subir este dispositivo</button><button class="btn ghost" id="clPull">Traer de la nube</button></div>'+
+      '<div class="bakstatus '+(rem?'ok':'warn')+'" style="margin-bottom:8px">'+(rem?'🔒 Sesión recordada en este dispositivo — si se cae, vuelve a entrar sola.':'Sesión no recordada: si se cierra, tendrás que escribir la contraseña otra vez.')+'</div>'+
+      '<div class="ctl btnrow"><button class="btn ghost" id="clRem">'+(rem?'Olvidar contraseña de este dispositivo':'Mantener sesión en este dispositivo')+'</button></div>'+
+      '<div class="ctl btnrow" style="margin-top:8px"><button class="btn ghost" id="clPush">Subir este dispositivo</button><button class="btn ghost" id="clPull">Traer de la nube</button></div>'+
       '<div class="ctl btnrow" style="margin-top:8px"><button class="btn ghost" id="clOut">Cerrar sesión</button></div>';
+    host.querySelector('#clRem').addEventListener('click',function(){
+      if(cloudHasCred()){cloudCredClear();toast('Contraseña olvidada en este dispositivo');renderCloudBox();return;}
+      var p=prompt('Para mantener la sesión en ESTE dispositivo, confirma la contraseña de la cuenta ('+(cloud.user.email||'')+').\n\nQuedará guardada solo en este celular. No lo hagas en el del encargado.');
+      if(p==null||!p)return;
+      cloudCredSave(cloud.user.email,p);toast('Sesión recordada en este dispositivo ✓');renderCloudBox();
+    });
     host.querySelector('#clPush').addEventListener('click',function(){
       if(!confirm('Subir TODOS los datos de este dispositivo a la nube (reemplaza lo que haya en la nube). ¿Continuar?'))return;
       toast('Subiendo…');cloudPushAll().then(function(n){toast(n+' registros subidos a la nube');renderCloudBox();}).catch(function(e){toast('Error: '+(e.message||e));});
@@ -920,15 +948,17 @@ function renderCloudBox(){
     '<div class="ufield"><label>Clave pública (anon)</label><input class="field" id="clKey" placeholder="eyJ..." value="'+esc(cloud.key||'')+'"></div>'+
     '<div class="ufield"><label>Correo</label><input class="field" id="clEmail" type="email" placeholder="tu@correo.com"></div>'+
     '<div class="ufield"><label>Contraseña</label><input class="field" id="clPass" type="password" placeholder="••••••"></div>'+
+    '<label class="remember"><input type="checkbox" id="clRemember"><span>Mantener sesión en este dispositivo (guarda la contraseña aquí). <b>Solo en tu celular, no en el del encargado.</b></span></label>'+
     '<div class="ctl btnrow"><button class="btn primary" id="clLogin">Conectar e iniciar sesión</button></div>'+
     '<div class="hint" id="clMsg" style="margin-top:8px">La URL y la clave pública las copias de Supabase → Project Settings → API.</div>';
   host.querySelector('#clLogin').addEventListener('click',function(){
     cloud.url=cloudNormUrl(host.querySelector('#clUrl').value||'');
     cloud.key=(host.querySelector('#clKey').value||'').trim();
     var email=(host.querySelector('#clEmail').value||'').trim(),pass=host.querySelector('#clPass').value||'';
+    var remember=!!(host.querySelector('#clRemember')&&host.querySelector('#clRemember').checked);
     if(!cloud.url||!cloud.key){toast('Pega URL y clave');return;}
     if(!email||!pass){toast('Pon correo y contraseña');return;}
-    cloudCfgSave();var msg=host.querySelector('#clMsg');if(msg)msg.textContent='Conectando…';
+    cloudCfgSave();if(remember)cloudCredSave(email,pass);else cloudCredClear();var msg=host.querySelector('#clMsg');if(msg)msg.textContent='Conectando…';
     cloudLogin(email,pass).then(function(){
       return cloudCount().then(function(n){
         if(n>0){
@@ -4848,6 +4878,9 @@ function boot(){
   cloudCfgLoad();loadAccess();
   if(cloud.on&&cloud.url&&cloud.key){
     cloudInit().then(function(){
+      if(cloud.user)return true;
+      return cloudTryRelogin(); // sin sesión: intenta reconectar con credenciales recordadas (este dispositivo)
+    }).then(function(){
       if(cloud.user){return cloudPull().then(function(){cloudSetStatus('ok');cloudStartAutoRefresh();});}
     }).catch(function(){}).then(function(){bootRender();});
   }else{
