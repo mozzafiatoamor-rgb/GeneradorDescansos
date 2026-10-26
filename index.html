@@ -2956,17 +2956,21 @@ function drawNombresImage(cb){
     cb(cv);
   });
 }
+function isTouchDevice(){try{return !!(window.matchMedia&&window.matchMedia('(pointer:coarse)').matches);}catch(e){return false;}}
 function shareCanvasToEmp(cv,fname,title,emp,caption){
   cv.toBlob(function(blob){
     if(!blob){toast('No se pudo generar la imagen');return;}
     var file=new File([blob],fname,{type:'image/png'});
-    if(navigator.canShare&&navigator.canShare({files:[file]})){
+    // Celular/táctil: usar el "compartir" del sistema (ahí sí aparece WhatsApp)
+    if(isTouchDevice()&&navigator.canShare&&navigator.canShare({files:[file]})){
       navigator.share({files:[file],title:title,text:caption||title}).catch(function(){});
-    }else{
-      var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
-      if(emp&&waDigits(emp)){toast('Imagen descargada — te abro su chat para adjuntarla');waSend(emp,caption||title);}
-      else toast('Imagen descargada');
+      return;
     }
+    // Escritorio (Mac/PC): el compartir del sistema NO trae WhatsApp -> descarga + abre el chat del empleado + intenta copiar al portapapeles
+    var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
+    try{if(navigator.clipboard&&window.ClipboardItem){navigator.clipboard.write([new ClipboardItem({'image/png':blob})]).catch(function(){});}}catch(e){}
+    if(emp&&waDigits(emp)){waSend(emp,caption||title);toast('Imagen lista: pégala (⌘V) en el chat o adjunta la descarga');}
+    else toast('Imagen descargada');
   },'image/png');
 }
 function drawChecadorReport(analysis,WDF,mon,faltaKind,cb){
@@ -3034,8 +3038,10 @@ function shareCanvas(cv,fname,title){
   cv.toBlob(function(blob){
     if(!blob){toast('No se pudo generar la imagen');return;}
     var file=new File([blob],fname,{type:'image/png'});
-    if(navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:title,text:title}).catch(function(){});}
-    else{var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},2000);toast('Imagen descargada');}
+    if(isTouchDevice()&&navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:title,text:title}).catch(function(){});return;}
+    var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
+    try{if(navigator.clipboard&&window.ClipboardItem){navigator.clipboard.write([new ClipboardItem({'image/png':blob})]).catch(function(){});}}catch(e){}
+    toast('Imagen descargada (y copiada: pégala con ⌘V)');
   },'image/png');
 }
 document.getElementById('imgBtn').addEventListener('click',function(){
