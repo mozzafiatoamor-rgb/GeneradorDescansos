@@ -743,6 +743,13 @@ input,select,textarea{color:var(--ink)}
     </div>
 
     <div class="setcard">
+      <div class="sh">WhatsApp en computadora</div>
+      <div class="hint" style="margin-bottom:8px">Al enviar recibos desde una laptop/PC, ¿con qué abrir el chat? (En celular siempre usa el compartir del sistema.)</div>
+      <div class="setrow"><div class="tx"><b>Abrir con</b></div>
+        <div class="ctl"><select class="field sm" id="waDesktop" style="width:170px"><option value="app">App instalada</option><option value="web">WhatsApp Web</option></select></div></div>
+    </div>
+
+    <div class="setcard">
       <div class="sh">Acceso por PIN (usuarios)</div>
       <div class="hint" style="margin-bottom:8px">Protege la app con PIN. El PIN de propinas solo deja capturar propinas diarias; el de administrador tiene acceso total.</div>
       <div id="accessBox"></div>
@@ -1611,6 +1618,7 @@ function renderAjustes(){
   bindNum('tipRet',FT,'retFine',50);bindNum('tipFi',FT,'fiFine',100);
   var efd=document.getElementById('empFiDbl');if(efd){efd.checked=!(FE.fiDoubleDay===false);efd.onchange=function(){cfg.finesEmp.fiDoubleDay=this.checked;save();};}
   var eds=document.getElementById('empDisc');if(eds){eds.checked=!(FE.discTime===false);eds.onchange=function(){cfg.finesEmp.discTime=this.checked;save();};}
+  var wad=document.getElementById('waDesktop');if(wad){wad.value=cfg.waDesktop||'app';wad.onchange=function(){cfg.waDesktop=this.value;save();toast('Guardado');};}
   renderBackupStatus();
   renderAutoBaks();
   renderCloudBox();
@@ -3944,7 +3952,17 @@ function importChecadorFile(file){
 }
 
 function waDigits(emp){var d=(emp&&emp.wa)?(''+emp.wa).replace(/\D/g,''):'';if(!d)return '';if(d.length===10)d='52'+d;if(d.length===12&&d.slice(0,2)==='52')return d;return d;}
-function waSend(emp,text){var d=waDigits(emp);if(d){var url='https://wa.me/'+d+'?text='+encodeURIComponent(text);try{window.open(url,'_blank');}catch(e){location.href=url;}}else{shareText(text,'Mensaje');toast('Sin WhatsApp en la ficha — copiado');}}
+function waLink(d,text){var t=encodeURIComponent(text||'');
+  if(isTouchDevice())return {mode:'open',url:'https://wa.me/'+d+'?text='+t};            // celular: enlace universal
+  var pref=(cfg&&cfg.waDesktop)||'app';
+  if(pref==='web')return {mode:'open',url:'https://web.whatsapp.com/send?phone='+d+'&text='+t}; // WhatsApp Web
+  return {mode:'proto',url:'whatsapp://send?phone='+d+'&text='+t};                       // app instalada
+}
+function waSend(emp,text){var d=waDigits(emp);if(!d){shareText(text,'Mensaje');toast('Sin WhatsApp en la ficha — copiado');return;}
+  var L=waLink(d,text);
+  if(L.mode==='proto'){try{location.href=L.url;}catch(e){window.open('https://wa.me/'+d+'?text='+encodeURIComponent(text||''),'_blank');}}
+  else{try{window.open(L.url,'_blank');}catch(e){location.href=L.url;}}
+}
 function empWeekText(emp,mon){mon=mon||state.week;applyRolesForWeek(mon);
   var WDL=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
   var lines=['*'+emp.name+'* — tu horario','_Semana '+fmtRange(mon)+'_',''];
