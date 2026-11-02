@@ -838,6 +838,16 @@ function storeSetLocal(k,v){_storeSet.call(store,k,v);} // escribe sin re-sincro
 function cloudSchedulePush(){if(cloud.timer)clearTimeout(cloud.timer);cloud.timer=setTimeout(cloudPush,900);}
 function cloudFlush(){if(cloud.on&&cloud.user&&cloud.ready&&Object.keys(cloud.dirty).length){if(cloud.timer)clearTimeout(cloud.timer);try{cloudPush();}catch(e){}}} // sube pendientes ya (al salir de la app)
 function cloudSetStatus(s){cloud.status=s;try{var el=document.getElementById('cloudStatus');if(el)renderCloudBox();}catch(e){}}
+// Dueño de los datos: normalmente tu propio id, pero si eres miembro de un "workspace" compartido
+// (p. ej. el kiosko con su propia cuenta) apuntas a los datos del dueño principal. Si no hay tabla/membresía, se usa tu id (comportamiento actual).
+function cloudOwner(){return cloud.dataOwner||(cloud.user&&cloud.user.id)||null;}
+function cloudResolveDataOwner(){
+  cloud.dataOwner=(cloud.user&&cloud.user.id)||null;
+  if(!cloud.sb||!cloud.user||!cloud.sb.from)return Promise.resolve();
+  return cloud.sb.from('descansos_members').select('workspace_owner').eq('user_id',cloud.user.id).limit(1).then(function(r){
+    if(!r.error&&r.data&&r.data.length&&r.data[0].workspace_owner)cloud.dataOwner=r.data[0].workspace_owner;
+  }).catch(function(){});
+}
 function loadSupabaseSDK(){return new Promise(function(res,rej){
   if(window.supabase&&window.supabase.createClient){res();return;}
   var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
@@ -852,9 +862,9 @@ function cloudInit(){return loadSupabaseSDK().then(function(){
       cloudTryRelogin().then(function(ok){if(ok){cloudPull().then(function(){cloudSetStatus('ok');cloudStartAutoRefresh();try{renderCloudBox();}catch(e){}});}});
     }
   });}catch(e){}
-  return cloud.sb.auth.getSession().then(function(r){cloud.user=(r&&r.data&&r.data.session)?r.data.session.user:null;cloud.ready=true;return cloud.user;});
+  return cloud.sb.auth.getSession().then(function(r){cloud.user=(r&&r.data&&r.data.session)?r.data.session.user:null;cloud.ready=true;return cloudResolveDataOwner().then(function(){return cloud.user;});});
 });}
-function cloudLogin(email,pass){return cloudInit().then(function(){return cloud.sb.auth.signInWithPassword({email:email,password:pass});}).then(function(r){if(r.error)throw r.error;cloud.user=r.data.user;cloud.on=true;cloudCfgSave();return cloud.user;});}
+function cloudLogin(email,pass){return cloudInit().then(function(){return cloud.sb.auth.signInWithPassword({email:email,password:pass});}).then(function(r){if(r.error)throw r.error;cloud.user=r.data.user;cloud.on=true;cloudCfgSave();return cloudResolveDataOwner().then(function(){return cloud.user;});});}
 var _cloudRelogging=false;
 function cloudTryRelogin(){ // reconecta solo, usando las credenciales recordadas en ESTE dispositivo
   if(_cloudRelogging)return Promise.resolve(false);
@@ -865,7 +875,7 @@ function cloudTryRelogin(){ // reconecta solo, usando las credenciales recordada
 function cloudLogout(){cloudCredClear();if(_cloudRefreshTimer){clearInterval(_cloudRefreshTimer);_cloudRefreshTimer=null;}if(cloud.rt){try{cloud.sb.removeChannel(cloud.rt);}catch(e){}cloud.rt=null;}if(!cloud.sb)return Promise.resolve();return cloud.sb.auth.signOut().then(function(){cloud.user=null;cloud.on=false;cloudCfgSave();});}
 function cloudPullCore(){ // baja de la nube y aplica SOLO lo que cambió (no toca lo que ya está igual)
   if(!cloud.sb||!cloud.user)return Promise.resolve({n:0,changed:0});
-  return cloud.sb.from('descansos_kv').select('k,v').eq('owner',cloud.user.id).then(function(r){
+  return cloud.sb.from('descansos_kv').select('k,v').eq('owner',cloudOwner()).then(function(r){
     if(r.error)throw r.error;var n=0,changed=0;
     (r.data||[]).forEach(function(row){n++;var cur;try{cur=JSON.parse(localStorage.getItem(row.k));}catch(e){cur=undefined;}
       if(JSON.stringify(cur)!==JSON.stringify(row.v)){storeSetLocal(row.k,row.v);changed++;}});
@@ -900,14 +910,14 @@ function cloudStartRealtime(){
     if(!cloud.sb||!cloud.user||!cloud.sb.channel)return;
     if(cloud.rt){try{cloud.sb.removeChannel(cloud.rt);}catch(e){}cloud.rt=null;}
     cloud.rt=cloud.sb.channel('kv-'+cloud.user.id)
-      .on('postgres_changes',{event:'*',schema:'public',table:'descansos_kv',filter:'owner=eq.'+cloud.user.id},function(){cloudAutoRefresh();})
+      .on('postgres_changes',{event:'*',schema:'public',table:'descansos_kv',filter:'owner=eq.'+cloudOwner()},function(){cloudAutoRefresh();})
       .subscribe();
   }catch(e){}
 }
 function cloudPush(){ // sube pendientes
   if(!cloud.sb||!cloud.user){return Promise.resolve();}
   var keys=Object.keys(cloud.dirty);if(!keys.length)return Promise.resolve();
-  var rows=keys.map(function(k){return {owner:cloud.user.id,k:k,v:cloud.dirty[k],updated_at:new Date().toISOString()};});
+  var rows=keys.map(function(k){return {owner:cloudOwner(),k:k,v:cloud.dirty[k],updated_at:new Date().toISOString()};});
   cloud.dirty={};cloudSetStatus('sync');
   if(!cloud.sb||!cloud.sb.from){rows.forEach(function(x){cloud.dirty[x.k]=x.v;});return Promise.resolve();}
   return cloud.sb.from('descansos_kv').upsert(rows,{onConflict:'owner,k'}).then(function(r){
@@ -917,11 +927,11 @@ function cloudPush(){ // sube pendientes
 }
 function cloudPushAll(){ // sube TODO lo local (migración inicial / "subir este dispositivo")
   if(!cloud.sb||!cloud.user)return Promise.resolve(0);
-  var rows=[];for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(!cloudSyncable(k))continue;var v;try{v=JSON.parse(localStorage.getItem(k));}catch(e){continue;}rows.push({owner:cloud.user.id,k:k,v:v,updated_at:new Date().toISOString()});}
+  var rows=[];for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(!cloudSyncable(k))continue;var v;try{v=JSON.parse(localStorage.getItem(k));}catch(e){continue;}rows.push({owner:cloudOwner(),k:k,v:v,updated_at:new Date().toISOString()});}
   if(!rows.length)return Promise.resolve(0);cloudSetStatus('sync');
   return cloud.sb.from('descansos_kv').upsert(rows,{onConflict:'owner,k'}).then(function(r){if(r.error)throw r.error;cloudSetStatus('ok');return rows.length;});
 }
-function cloudCount(){if(!cloud.sb||!cloud.user)return Promise.resolve(0);return cloud.sb.from('descansos_kv').select('k',{count:'exact',head:true}).eq('owner',cloud.user.id).then(function(r){return r.count||0;});}
+function cloudCount(){if(!cloud.sb||!cloud.user)return Promise.resolve(0);return cloud.sb.from('descansos_kv').select('k',{count:'exact',head:true}).eq('owner',cloudOwner()).then(function(r){return r.count||0;});}
 function renderCloudBox(){
   var host=document.getElementById('cloudBox');if(!host)return;
   if(cloud.user){
