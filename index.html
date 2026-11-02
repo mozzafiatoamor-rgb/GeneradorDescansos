@@ -999,7 +999,7 @@ function applySedeKeys(id){var p=(id==='mozza')?'':(id+'.');
   K.emp='desc.v1.'+p+'employees';K.base='desc.v1.'+p+'base';K.weeks='desc.v1.'+p+'weeks';
   K.cfg='desc.v1.'+p+'cfg';K.closed='desc.v1.'+p+'closed';K.pay='desc.v1.'+p+'payroll';
   K.tips='desc.v1.'+p+'tips';K.chk='desc.v1.'+p+'checador';K.util='desc.v1.'+p+'utilidades';K.exp='desc.v1.'+p+'gastos';K.autobak='desc.v1.'+p+'autobak';K.lastexp='desc.v1.'+p+'lastexport';}
-function switchSede(id){if(id===sede)return;save();sede=id;store.set(CURSEDE_KEY,id);applySedeKeys(id);loadData();state.week=startOfWeek(new Date());if(state.tab==='propinas'&&!sedeHasTips())state.tab='cal';renderSedeBar();setTab(state.tab);}
+function switchSede(id){if(id===sede)return;save();sede=id;store.set(CURSEDE_KEY,id);applySedeKeys(id);loadData();state.week=startOfWeek(new Date());if(state.tab==='propinas'&&!sedeHasTips())state.tab='cal';renderSedeBar();setTab(state.tab);try{withLogo(function(){});}catch(e){}}
 function sedeKeys(id){var p=(id==='mozza')?'':(id+'.');return {emp:'desc.v1.'+p+'employees',base:'desc.v1.'+p+'base',weeks:'desc.v1.'+p+'weeks',cfg:'desc.v1.'+p+'cfg',closed:'desc.v1.'+p+'closed',pay:'desc.v1.'+p+'payroll',tips:'desc.v1.'+p+'tips',chk:'desc.v1.'+p+'checador',util:'desc.v1.'+p+'utilidades',exp:'desc.v1.'+p+'gastos'};}
 function sedeSnapshot(id){var kk=sedeKeys(id);return {employees:store.get(kk.emp,[]),base:store.get(kk.base,null),weeks:store.get(kk.weeks,{}),closed:store.get(kk.closed,{}),payroll:store.get(kk.pay,{}),tips:store.get(kk.tips,{}),chk:store.get(kk.chk,{}),util:store.get(kk.util,{}),expenses:store.get(kk.exp,[]),cfg:store.get(kk.cfg,{})};}
 function writeSedeSnapshot(id,d){if(!isObj(d))return;var kk=sedeKeys(id);
@@ -2913,7 +2913,7 @@ function withLogo(fn){
   var im=new Image(),done=false,go=function(){if(done)return;done=true;window._logoImg=im;window._logoImgSede=sede;fn();};
   im.onload=go;im.onerror=go;
   try{im.src=new URL(sedeLogoFile(),location.href).href;}catch(e){go();return;}
-  if(im.complete)go();else setTimeout(go,1500);
+  if(im.complete)go();else setTimeout(go,4000);
 }
 function imgHeader(x,pad,W,rr,title){
   var hy=pad;
@@ -4900,6 +4900,7 @@ function bootRender(){
   try{initRestDrag();}catch(e){}
   try{initGestures();}catch(e){}
   try{applyRoleUI();}catch(e){}
+  try{withLogo(function(){});}catch(e){} // precarga el logo para que salga en el primer recibo (sobre todo en Mac/PC con caché fría)
   try{
     function onLeave(){saveView();if(access.on&&state.role)saveGrace();cloudFlush();} // al salir: guarda vista, gracia y sube pendientes
     document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')onLeave();else cloudAutoRefresh();});
