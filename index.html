@@ -2349,7 +2349,7 @@ function openPayrollSheet(empId){
     }
 
     sc.innerHTML=
-      '<div class="shead"><div class="t">'+esc(emp.name)+(emp.mgr?' ★':'')+' <button id="payImg" class="miniimg" title="Imagen para enviar">📸</button> <button id="payHist" class="miniimg" title="Historial de nómina">📊</button></div><div class="s">'+AREAS[emp.area].short+' · '+SHIFTS[emp.shift].label+' · '+fmtRange(state.week)+'</div></div>'+
+      '<div class="shead"><div class="t">'+esc(emp.name)+(emp.mgr?' ★':'')+' <button id="payHist" class="miniimg" title="Historial de nómina">📊</button></div><div class="s">'+AREAS[emp.area].short+' · '+SHIFTS[emp.shift].label+' · '+fmtRange(state.week)+'</div></div>'+
       '<div class="sbody">'+
         (r>0?'':'<div class="warnmini">Este empleado no tiene sueldo configurado. <b id="goPay">Configúralo aquí</b>.</div>')+
         '<div class="payblock"><div class="pbl">Pago base</div><div class="pbv">'+baseLine+'</div><div class="pbtot">'+fmtMoney(bp())+'</div></div>'+
@@ -2363,7 +2363,7 @@ function openPayrollSheet(empId){
         '<div class="fgroup"><label>Otros descuentos</label><div class="lilist">'+otHtml+'</div><div class="addrow"><input class="field sm" id="otConc" placeholder="concepto"><input class="field sm" id="otMonto" type="number" inputmode="decimal" placeholder="$ monto"><button class="mini add" id="otAdd">+</button></div></div>'+
         '<div class="netbox"><span>Neto a pagar</span><b id="netoVal">'+fmtMoney(net())+'</b></div>'+
         '<label class="paidtoggle"><span>Marcar como pagado</span><span class="swt"><input type="checkbox" id="pPaid" '+(entry.paid?'checked':'')+'><span></span></span></label>'+
-        '<button class="btn ghost" id="payWa" style="margin-bottom:8px">💬 Enviar recibo por WhatsApp</button>'+
+        '<button class="btn primary" id="paySend" style="margin-bottom:8px">📸 Enviar recibo por WhatsApp</button>'+
         '<div class="sheetfoot"><button class="btn primary" id="savePay">Guardar</button></div>'+
       '</div>';
     bind();
@@ -2393,12 +2393,11 @@ function openPayrollSheet(empId){
       finalizeAbonos();
       payroll[k][empId]=entry;save();}
     var phist=sc.querySelector('#payHist');if(phist)phist.addEventListener('click',function(){toast('Generando historial…');drawPayHistoryImage(emp.id,function(cv){previewImage(cv,'historial-'+emp.name.split(' ')[0]+'.png','Historial de nómina · '+emp.name.split(' ')[0]);});});
-    var pimg=sc.querySelector('#payImg');if(pimg)pimg.addEventListener('click',function(){
+    var psend=sc.querySelector('#paySend');if(psend)psend.addEventListener('click',function(){
       commitEntry();
       toast('Generando recibo…');
       drawEmployeePayImage(emp.id,function(cv){shareCanvasToEmp(cv,'nomina-'+emp.name.split(' ')[0]+'-'+iso(state.week)+'.png','Nómina '+emp.name.split(' ')[0],emp,empPayText(emp,state.week));});
     });
-    var pwa=sc.querySelector('#payWa');if(pwa)pwa.addEventListener('click',function(){commitEntry();waSend(emp,empPayText(emp,state.week));});
     var pp=sc.querySelector('#pPaid');if(pp)pp.addEventListener('change',function(){entry.paid=this.checked;});
     var peh=sc.querySelector('#pExtraH');if(peh)peh.addEventListener('input',function(){entry.extraHrs=this.value===''?0:Math.max(0,parseFloat(this.value)||0);entry.extraManual=true;var a=sc.querySelector('#extraAmt');if(a)a.textContent=extra()>0?'+'+fmtMoney(extra()):'';refreshNet();});
     var xa=sc.querySelector('#xtAuto');if(xa)xa.addEventListener('click',function(){delete entry.extraManual;entry.extraHrs=calExtraHours(empId,state.week);paint();});
